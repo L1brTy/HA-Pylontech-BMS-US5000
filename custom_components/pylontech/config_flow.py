@@ -125,7 +125,7 @@ class PylontechFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema_dict = {
             vol.Required(CONF_HOST, default="10.10.10.200"): str,
-            vol.Required(CONF_PORT, default=4196t): int,
+            vol.Required(CONF_PORT, default=4196): int,
             vol.Optional(CONF_DEVICE_NAME, default="US5000-Speicher"): str,
         }
 
