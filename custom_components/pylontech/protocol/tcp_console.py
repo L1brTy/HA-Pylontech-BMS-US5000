@@ -81,7 +81,6 @@ class TCPConsoleProtocol(ProtocolBase):
     async def info(self) -> InfoCommand:
         return InfoCommand(await self._exec_cmd("info"))
 
-    # FIX 1: pwr nimmt jetzt pack_id an
     async def pwr(self, pack_id: int = 1) -> PwrCommand:
         cmd = f"pwr {pack_id}" if pack_id > 1 else "pwr"
         return PwrCommand(await self._exec_cmd(cmd), pack_id)
@@ -108,12 +107,10 @@ class TCPConsoleProtocol(ProtocolBase):
             bmu_pcbas=list(info.bmu_pcbas),
         )
 
-    # FIX 2: get_battery_data nimmt pack_id und holt Werte absturzsicher ab
     async def get_battery_data(self, pack_id: int = 1) -> BatteryData:
         pwr = await self.pwr(pack_id)
         unit = await self.unit()
 
-        # Hilfsfunktion, um Werte sicher zu lesen
         def get_val(obj, attr):
             return getattr(obj, attr).value if hasattr(obj, attr) else None
 
@@ -173,7 +170,6 @@ class TCPConsoleProtocol(ProtocolBase):
             dc_voltage=get_val(pwr, "dc_voltage"),
             bat_voltage=get_val(pwr, "bat_voltage"),
             error_code=get_val(pwr, "error_code"),
-            
         )
 
     def __repr__(self) -> str:
