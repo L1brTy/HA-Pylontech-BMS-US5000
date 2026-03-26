@@ -1,9 +1,4 @@
-"""TCP Console Protocol implementation for Pylontech BMS.
-
-This module implements the text-based console protocol over TCP.
-Commands: pwr, unit, bat, info
-Response format: ASCII text with 'pylon>' prompt
-"""
+"""TCP Console Protocol implementation for Pylontech BMS."""
 
 from __future__ import annotations
 
@@ -14,7 +9,7 @@ from typing import Any
 
 from .base import ProtocolBase
 from ..const import BatteryVariant, ConnectionType
-from ..models import BatteryData, BMUData, DeviceInfo
+from ..models import BatteryData, DeviceInfo
 
 import sys
 import os
@@ -32,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 class TCPConsoleProtocol(ProtocolBase):
     """Pylontech BMS TCP console protocol implementation."""
 
-    _END_PROMPTS = ("Command completed successfully", "$$")
+    _END_PROMPTS = ("Command completed successfully", "$$", "pylon>")
 
     def __init__(self, host: str, port: int) -> None:
         self.host = host
@@ -44,7 +39,6 @@ class TCPConsoleProtocol(ProtocolBase):
         self.reader, self.writer = await asyncio.wait_for(
             asyncio.open_connection(self.host, self.port), 5
         )
-        _LOGGER.debug("Connected to %s:%s", self.host, self.port)
 
     async def disconnect(self) -> None:
         if self.writer is not None:
@@ -52,37 +46,33 @@ class TCPConsoleProtocol(ProtocolBase):
             await self.writer.wait_closed()
             self.reader = None
             self.writer = None
-            _LOGGER.debug("Disconnected from %s:%s", self.host, self.port)
 
     async def _exec_cmd(self, cmd: str) -> tuple[str]:
+        # HIER WIRD DER BEFEHL PHYSISCH GESENDET
         self.writer.write((cmd + "\r").encode("ascii"))
         await asyncio.wait_for(self.writer.drain(), 2)
         lines = []
-        linebytes = bytearray()
-        while linebytes != b"pylon>":
-            data = await asyncio.wait_for(self.reader.read(120), 2)
-            for i in data:
-                if i not in (13, 10):
-                    linebytes.append(i)
-                elif len(linebytes) > 0:
-                    line = linebytes.decode("ascii")
-                    if line not in self._END_PROMPTS:
-                        lines.append(line)
-                    linebytes = bytearray()
-        if lines.pop(0) != cmd:
-            raise ValueError("Command echo mismatch")
-        if lines.pop(0) != "@":
-            raise ValueError("Missing @ separator")
+        try:
+            data = await asyncio.wait_for(self.reader.readuntil(b"pylon>"), 5)
+            decoded = data.decode("ascii", errors="ignore")
+            for line in decoded.splitlines():
+                clean = line.strip()
+                if clean and clean not in self._END_PROMPTS and clean != cmd and clean != "@":
+                    lines.append(clean)
+        except Exception as e:
+            _LOGGER.error(f"Error executing {cmd}: {e}")
         return tuple(lines)
 
-    async def bat(self) -> BatCommand:
-        return BatCommand(await self._exec_cmd("bat"))
+    async def bat(self, pack_id: int = 1) -> BatCommand:
+        # Zwingt ihn, "bat 1" oder "bat 2" zu senden
+        cmd = f"bat {pack_id}"
+        return BatCommand(await self._exec_cmd(cmd))
 
     async def info(self) -> InfoCommand:
         return InfoCommand(await self._exec_cmd("info"))
 
     async def pwr(self, pack_id: int = 1) -> PwrCommand:
-        cmd = f"pwr {pack_id}" if pack_id > 1 else "pwr"
+        cmd = f"pwr {pack_id}"
         return PwrCommand(await self._exec_cmd(cmd), pack_id)
 
     async def unit(self) -> UnitCommand:
@@ -92,7 +82,7 @@ class TCPConsoleProtocol(ProtocolBase):
         info = await self.info()
         return DeviceInfo(
             manufacturer=info.manufacturer.value if info.manufacturer.value else "Pylontech",
-            model=info.device_name.value if info.device_name.value else "Unknown",
+            model=info.device_name.value if info.device_name.value else "US5000",
             barcode=info.module_barcode.value if info.module_barcode.value else "Unknown",
             firmware_version=info.main_sw_version.value if info.main_sw_version.value else "Unknown",
             connection_type=ConnectionType.TCP_CONSOLE,
@@ -108,8 +98,9 @@ class TCPConsoleProtocol(ProtocolBase):
         )
 
     async def get_battery_data(self, pack_id: int = 1) -> BatteryData:
+        # HIER rufen wir jetzt explizit PWR und BAT ab
         pwr = await self.pwr(pack_id)
-        unit = await self.unit()
+        bat_data = await self.bat(pack_id)
 
         def get_val(obj, attr):
             return getattr(obj, attr).value if hasattr(obj, attr) else None
@@ -119,18 +110,17 @@ class TCPConsoleProtocol(ProtocolBase):
             "pack": get_val(pwr, "temp"),
             "cell_low": get_val(pwr, "cell_temp_low"),
             "cell_high": get_val(pwr, "cell_temp_high"),
-            "unit_low": get_val(pwr, "unit_temp_low"),
-            "unit_high": get_val(pwr, "unit_temp_high"),
         }
 
+        # Auslesen der Zellspannungen aus der Bat-Antwort
         cell_voltages = []
         cell_temps = []
-        if hasattr(unit, 'values'):
-            for unit_val in unit.values:
-                if get_val(unit_val, 'cell_volt_low'): cell_voltages.append(get_val(unit_val, 'cell_volt_low'))
-                if get_val(unit_val, 'cell_bolt_high'): cell_voltages.append(get_val(unit_val, 'cell_bolt_high'))
-                if get_val(unit_val, 'cell_temp_low'): cell_temps.append(get_val(unit_val, 'cell_temp_low'))
-                if get_val(unit_val, 'cell_temp_high'): cell_temps.append(get_val(unit_val, 'cell_temp_high'))
+        if hasattr(bat_data, 'values'):
+            for cell in bat_data.values:
+                if hasattr(cell, 'volt') and cell.volt:
+                    cell_voltages.append(cell.volt)
+                if hasattr(cell, 'tempr') and cell.tempr:
+                    cell_temps.append(cell.tempr)
 
         volt = get_val(pwr, "volt")
         curr = get_val(pwr, "curr")
@@ -157,20 +147,13 @@ class TCPConsoleProtocol(ProtocolBase):
             temp_state=get_val(pwr, "temp_state"),
             cell_volt_state=get_val(pwr, "cell_volt_state"),
             cell_temp_state=get_val(pwr, "cell_temp_state"),
-            unit_volt_state=get_val(pwr, "unit_volt_state"),
-            unit_temp_state=get_val(pwr, "unit_temp_state"),
             charge_ah=get_val(pwr, "charge_ah"),
             charge_ah_perc=get_val(pwr, "charge_ah_perc"),
             charge_wh=get_val(pwr, "charge_wh_wh"),
             charge_wh_perc=get_val(pwr, "charge_wh_perc"),
             cell_volt_low=get_val(pwr, "cell_volt_low"),
             cell_volt_high=get_val(pwr, "cell_bolt_high"),
-            unit_volt_low=get_val(pwr, "unit_volt_low"),
-            unit_volt_high=get_val(pwr, "unit_volt_high"),
             dc_voltage=get_val(pwr, "dc_voltage"),
             bat_voltage=get_val(pwr, "bat_voltage"),
             error_code=get_val(pwr, "error_code"),
         )
-
-    def __repr__(self) -> str:
-        return f"<TCPConsoleProtocol host={self.host} port={self.port}>"
