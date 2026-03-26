@@ -1,4 +1,4 @@
-"""Package for reading data from Pylontech (US5000 Bulletproof) BMS."""
+"""Package for reading data from Pylontech (US5000 Bulletproof & Complete) BMS."""
 
 from __future__ import annotations
 
@@ -165,31 +165,65 @@ class BatCommand:
         self.values = [BatValues(line) for line in lines if line and line[0].isdigit()]
 
 class InfoCommand:
-    """Pylontech BMS console command 'info' (Bulletproof Version)."""
+    """Pylontech BMS console command 'info' (Bulletproof & Complete Version)."""
     def __init__(self, lines: tuple[str]) -> None:
         self.device_address = Integer("Device address")
         self.manufacturer = Text("Manufacturer")
         self.device_name = Text("Device name")
         self.board_version = Text("Board version")
-        self.sw_version = Text("Soft version")
+        self.hard_version = Text("Hard version")
         self.main_sw_version = Text("Main Soft version")
+        self.sw_version = Text("Soft version")
+        self.boot_version = Text("Boot version")
+        self.comm_version = Text("Comm version")
+        self.release_date = Text("Release Date")
         self.barcode = Text("Barcode")
+        self.pcba_barcode = Text("PCBA Barcode")
         self.module_barcode = Text("Module Barcode")
+        self.pwr_supply_barcode = Text("PowerSupply Barcode")
+        self.device_test_time = Text("Device Test Time")
+        self.specification = Text("Specification")
         self.cell_number = Integer("Cell Number")
+        self.max_discharge_current = Current("Max Discharge Curr")
+        self.max_charge_current = Current("Max Charge Curr")
+        self.shut_circuit = Text("Shut Circuit")
+        self.relay_feedback = Text("Relay Feedback")
+        self.new_board = Text("New Board")
+
+        self.bmu_modules = []
+        self.bmu_pcbas = []
 
         for line in lines:
-            if "Device address" in line: self.device_address.set(line.split(":")[1].strip())
-            elif "Manufacturer" in line: self.manufacturer.set(line.split(":")[1].strip())
-            elif "Device name" in line: self.device_name.set(line.split(":")[1].strip())
-            elif "Board version" in line: self.board_version.set(line.split(":")[1].strip())
-            elif "Soft  version" in line or "Soft version" in line: self.sw_version.set(line.split(":")[1].strip())
-            elif "Main Soft version" in line: self.main_sw_version.set(line.split(":")[1].strip())
-            elif "Barcode" in line and "Module" not in line and "PCBA" not in line: 
-                self.barcode.set(line.split(":")[1].strip())
-            elif "Module Barcode" in line: self.module_barcode.set(line.split(":")[1].strip())
-            elif "Cell Number" in line: self.cell_number.set(line.split(":")[1].strip())
+            try:
+                if ":" in line:
+                    key, val = line.split(":", 1)
+                    key = key.strip()
+                    val = val.strip()
+                    
+                    if "Device address" in key: self.device_address.set(val)
+                    elif "Manufacturer" in key: self.manufacturer.set(val)
+                    elif "Device name" in key: self.device_name.set(val)
+                    elif "Board version" in key: self.board_version.set(val)
+                    elif "Hard" in key and "version" in key: self.hard_version.set(val)
+                    elif "Main Soft version" in key: self.main_sw_version.set(val)
+                    elif "Soft" in key and "version" in key and "Main" not in key: self.sw_version.set(val)
+                    elif "Boot" in key and "version" in key: self.boot_version.set(val)
+                    elif "Comm" in key and "version" in key: self.comm_version.set(val)
+                    elif "Release Date" in key: self.release_date.set(val)
+                    elif "Barcode" in key and "Module" not in key and "PCBA" not in key and "PowerSupply" not in key: self.barcode.set(val)
+                    elif "Module Barcode" in key: self.module_barcode.set(val)
+                    elif "PCBA Barcode" in key: self.pcba_barcode.set(val)
+                    elif "PowerSupply Barcode" in key: self.pwr_supply_barcode.set(val)
+                    elif "Cell Number" in key: self.cell_number.set(val)
+                    elif "Max Disch" in key: self.max_discharge_current.set(val)
+                    elif "Max Charge" in key: self.max_charge_current.set(val)
+                elif line.startswith("Module"):
+                    self.bmu_modules.insert(0, line.split()[2] if len(line.split()) > 2 else "")
+                elif line.startswith("PCBA"):
+                    self.bmu_pcbas.insert(0, line.split()[2] if len(line.split()) > 2 else "")
+            except Exception:
+                pass
 
-        # Sicherstellen, dass module_barcode NIEMALS leer ist (Config Flow Fix)
         if not self.module_barcode.value:
             self.module_barcode.value = self.barcode.value if self.barcode.value else "Unknown_US5000"
 
