@@ -39,15 +39,12 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.protocol = protocol
         self.device_info_model = device_info
         self.serial_nr = device_info.barcode if device_info.barcode else "unknown_serial"
-        
-        # FIX: Sicherstellen, dass pack_count niemals None ist
-        self.pack_count = device_info.pack_count if device_info.pack_count is not None else 1
-        if device_info.pack_count is None:
-            _LOGGER.warning("Pylontech BMS: Pack count not detected, defaulting to 1")
-            
         self.device_name = device_name
-
-        # Create device info for each pack using the safe self.pack_count
+        
+        # Startwert (wird in detect_sensors gleich automatisch korrigiert)
+        self.pack_count = 1
+        
+        # Create device info for each pack
         self.pack_device_infos = tuple(
             _pack_device(device_info, pack_id, device_name)
             for pack_id in range(1, self.pack_count + 1)
@@ -61,7 +58,7 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.connect()
             result = {}
 
-            # Query each pack separately using self.pack_count
+            # Query each pack separately using the detected pack_count
             for pack_id in range(1, self.pack_count + 1):
                 try:
                     battery_data = await self.protocol.get_battery_data(pack_id=pack_id)
@@ -111,18 +108,45 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return result
 
     async def detect_sensors(self) -> None:
-        """Retrieve all supported sensor names from BMS."""
+        """Retrieve all supported sensor names and AUTO-DETECT packs."""
         try:
             await self.protocol.connect()
-            for pack_id in range(1, self.pack_count + 1):
+            
+            detected_packs = 0
+            _LOGGER.info("Starte automatische Erkennung der Pylontech Packs...")
+            
+            # Wir fragen nacheinander die Packs ab (Pylontech unterstützt max. 16 am RS485 Bus)
+            for pack_id in range(1, 17):
                 try:
                     battery_data = await self.protocol.get_battery_data(pack_id=pack_id)
+                    
+                    # Wenn keine Spannung zurückkommt, existiert das Pack sehr wahrscheinlich nicht
+                    if battery_data.pack_voltage in (None, 0, 0.0):
+                        break
+                        
                     result = self._flatten_battery_data(battery_data)
                     pack_sensors = {name: type(val) for name, val in result.items()}
                     self.available_sensors_per_pack[pack_id] = pack_sensors
-                except Exception as err:
-                    _LOGGER.warning("Failed to detect sensors for pack %d: %s", pack_id, err)
-                    self.available_sensors_per_pack[pack_id] = {}
+                    detected_packs = pack_id
+                    
+                except Exception:
+                    # Sobald ein Fehler fliegt (z.B. Pack existiert nicht), brechen wir ab
+                    break
+
+            # Nach der Suchschleife wissen wir genau, wie viele Packs es gibt
+            if detected_packs > 0:
+                self.pack_count = detected_packs
+                _LOGGER.info("Erfolgreich %d Pylontech Packs erkannt!", self.pack_count)
+                
+                # Gerätedaten für Home Assistant mit der korrekten Anzahl neu aufbauen
+                self.pack_device_infos = tuple(
+                    _pack_device(self.device_info_model, pid, self.device_name)
+                    for pid in range(1, self.pack_count + 1)
+                )
+            else:
+                _LOGGER.warning("Konnte keine Packs erkennen. Falle auf 1 Pack zurück.")
+                self.pack_count = 1
+
         finally:
             await self.protocol.disconnect()
 
