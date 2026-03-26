@@ -48,7 +48,6 @@ class TCPConsoleProtocol(ProtocolBase):
             self.writer = None
 
     async def _exec_cmd(self, cmd: str) -> tuple[str]:
-        # HIER WIRD DER BEFEHL PHYSISCH GESENDET
         self.writer.write((cmd + "\r").encode("ascii"))
         await asyncio.wait_for(self.writer.drain(), 2)
         lines = []
@@ -60,11 +59,11 @@ class TCPConsoleProtocol(ProtocolBase):
                 if clean and clean not in self._END_PROMPTS and clean != cmd and clean != "@":
                     lines.append(clean)
         except Exception as e:
-            _LOGGER.error(f"Error executing {cmd}: {e}")
+            pass
         return tuple(lines)
 
     async def bat(self, pack_id: int = 1) -> BatCommand:
-        # Zwingt ihn, "bat 1" oder "bat 2" zu senden
+        # Hier MUSS die Zahl mit (bat 1, bat 2)
         cmd = f"bat {pack_id}"
         return BatCommand(await self._exec_cmd(cmd))
 
@@ -72,8 +71,8 @@ class TCPConsoleProtocol(ProtocolBase):
         return InfoCommand(await self._exec_cmd("info"))
 
     async def pwr(self, pack_id: int = 1) -> PwrCommand:
-        cmd = f"pwr {pack_id}"
-        return PwrCommand(await self._exec_cmd(cmd), pack_id)
+        # Hier darf KEINE Zahl mit, sonst blockt der US5000!
+        return PwrCommand(await self._exec_cmd("pwr"), pack_id)
 
     async def unit(self) -> UnitCommand:
         return UnitCommand(await self._exec_cmd("unit"))
@@ -98,7 +97,6 @@ class TCPConsoleProtocol(ProtocolBase):
         )
 
     async def get_battery_data(self, pack_id: int = 1) -> BatteryData:
-        # HIER rufen wir jetzt explizit PWR und BAT ab
         pwr = await self.pwr(pack_id)
         bat_data = await self.bat(pack_id)
 
@@ -112,7 +110,6 @@ class TCPConsoleProtocol(ProtocolBase):
             "cell_high": get_val(pwr, "cell_temp_high"),
         }
 
-        # Auslesen der Zellspannungen aus der Bat-Antwort
         cell_voltages = []
         cell_temps = []
         if hasattr(bat_data, 'values'):
