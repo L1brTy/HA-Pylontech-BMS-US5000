@@ -16,7 +16,6 @@ from .base import ProtocolBase
 from ..const import BatteryVariant, ConnectionType
 from ..models import BatteryData, BMUData, DeviceInfo
 
-# Import all sensor and command classes from parent pylontech module
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -30,37 +29,24 @@ from pylontech import (
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class TCPConsoleProtocol(ProtocolBase):
-    """Pylontech BMS TCP console protocol implementation.
-
-    Uses text-based commands over TCP connection (default port 1234).
-    Commands: pwr, unit, bat, info
-    """
+    """Pylontech BMS TCP console protocol implementation."""
 
     _END_PROMPTS = ("Command completed successfully", "$$")
 
     def __init__(self, host: str, port: int) -> None:
-        """Initialize the TCP console protocol.
-
-        Args:
-            host: BMS hostname or IP address
-            port: TCP port (typically 1234)
-        """
         self.host = host
         self.port = port
         self.reader: StreamReader | None = None
         self.writer: StreamWriter | None = None
 
     async def connect(self) -> None:
-        """Establish TCP connection to BMS console."""
         self.reader, self.writer = await asyncio.wait_for(
             asyncio.open_connection(self.host, self.port), 5
         )
         _LOGGER.debug("Connected to %s:%s", self.host, self.port)
 
     async def disconnect(self) -> None:
-        """Close TCP connection."""
         if self.writer is not None:
             self.writer.close()
             await self.writer.wait_closed()
@@ -69,26 +55,13 @@ class TCPConsoleProtocol(ProtocolBase):
             _LOGGER.debug("Disconnected from %s:%s", self.host, self.port)
 
     async def _exec_cmd(self, cmd: str) -> tuple[str]:
-        """Send command to BMS and parse response.
-
-        Args:
-            cmd: Command string to send
-
-        Returns:
-            Tuple of response lines
-
-        Raises:
-            ValueError: If response format is invalid
-        """
         self.writer.write((cmd + "\r").encode("ascii"))
         await asyncio.wait_for(self.writer.drain(), 2)
         lines = []
         linebytes = bytearray()
         while linebytes != b"pylon>":
-            # Read in smaller chunks (Linux compatibility)
             data = await asyncio.wait_for(self.reader.read(120), 2)
             for i in data:
-                # Handle mixed LF and CR+LF line endings
                 if i not in (13, 10):
                     linebytes.append(i)
                 elif len(linebytes) > 0:
@@ -103,29 +76,21 @@ class TCPConsoleProtocol(ProtocolBase):
         return tuple(lines)
 
     async def bat(self) -> BatCommand:
-        """Invoke 'bat' console command."""
         return BatCommand(await self._exec_cmd("bat"))
 
     async def info(self) -> InfoCommand:
-        """Invoke 'info' console command."""
         return InfoCommand(await self._exec_cmd("info"))
 
-    async def pwr(self) -> PwrCommand:
-        """Invoke 'pwr' console command."""
-        return PwrCommand(await self._exec_cmd("pwr"))
+    # FIX 1: pwr nimmt jetzt pack_id an
+    async def pwr(self, pack_id: int = 1) -> PwrCommand:
+        cmd = f"pwr {pack_id}" if pack_id > 1 else "pwr"
+        return PwrCommand(await self._exec_cmd(cmd), pack_id)
 
     async def unit(self) -> UnitCommand:
-        """Invoke 'unit' console command."""
         return UnitCommand(await self._exec_cmd("unit"))
 
     async def get_device_info(self) -> DeviceInfo:
-        """Retrieve device information from info command.
-
-        Returns:
-            DeviceInfo with manufacturer, model, version, barcode, etc.
-        """
         info = await self.info()
-
         return DeviceInfo(
             manufacturer=info.manufacturer.value if info.manufacturer.value else "Pylontech",
             model=info.device_name.value if info.device_name.value else "Unknown",
@@ -143,107 +108,74 @@ class TCPConsoleProtocol(ProtocolBase):
             bmu_pcbas=list(info.bmu_pcbas),
         )
 
-    async def get_battery_data(self) -> BatteryData:
-        """Fetch current battery telemetry from pwr and unit commands.
-
-        Returns:
-            BatteryData with all available measurements
-        """
-        # Fetch both pwr and unit data
-        pwr = await self.pwr()
+    # FIX 2: get_battery_data nimmt pack_id und holt Werte absturzsicher ab
+    async def get_battery_data(self, pack_id: int = 1) -> BatteryData:
+        pwr = await self.pwr(pack_id)
         unit = await self.unit()
 
-        # Build temperature dictionary
+        # Hilfsfunktion, um Werte sicher zu lesen
+        def get_val(obj, attr):
+            return getattr(obj, attr).value if hasattr(obj, attr) else None
+
         temperatures = {
-            "average": pwr.avg_temp.value,
-            "pack": pwr.temp.value,
-            "cell_low": pwr.cell_temp_low.value,
-            "cell_high": pwr.cell_temp_high.value,
-            "unit_low": pwr.unit_temp_low.value,
-            "unit_high": pwr.unit_temp_high.value,
+            "average": get_val(pwr, "avg_temp"),
+            "pack": get_val(pwr, "temp"),
+            "cell_low": get_val(pwr, "cell_temp_low"),
+            "cell_high": get_val(pwr, "cell_temp_high"),
+            "unit_low": get_val(pwr, "unit_temp_low"),
+            "unit_high": get_val(pwr, "unit_temp_high"),
         }
 
-        # Extract cell voltages and temps from unit data
         cell_voltages = []
         cell_temps = []
-        for unit_val in unit.values:
-            # Each unit may have cell-level data
-            if hasattr(unit_val, 'cell_volt_low') and unit_val.cell_volt_low.value:
-                cell_voltages.append(unit_val.cell_volt_low.value)
-            if hasattr(unit_val, 'cell_bolt_high') and unit_val.cell_bolt_high.value:
-                cell_voltages.append(unit_val.cell_bolt_high.value)
-            if hasattr(unit_val, 'cell_temp_low') and unit_val.cell_temp_low.value:
-                cell_temps.append(unit_val.cell_temp_low.value)
-            if hasattr(unit_val, 'cell_temp_high') and unit_val.cell_temp_high.value:
-                cell_temps.append(unit_val.cell_temp_high.value)
+        if hasattr(unit, 'values'):
+            for unit_val in unit.values:
+                if get_val(unit_val, 'cell_volt_low'): cell_voltages.append(get_val(unit_val, 'cell_volt_low'))
+                if get_val(unit_val, 'cell_bolt_high'): cell_voltages.append(get_val(unit_val, 'cell_bolt_high'))
+                if get_val(unit_val, 'cell_temp_low'): cell_temps.append(get_val(unit_val, 'cell_temp_low'))
+                if get_val(unit_val, 'cell_temp_high'): cell_temps.append(get_val(unit_val, 'cell_temp_high'))
+
+        volt = get_val(pwr, "volt")
+        curr = get_val(pwr, "curr")
+        power = volt * curr if volt is not None and curr is not None else None
+        
+        soc = get_val(pwr, "soc")
+        if soc is None:
+            soc = get_val(pwr, "charge_ah_perc")
 
         return BatteryData(
-            # Pack-level measurements
-            pack_voltage=pwr.volt.value,
-            pack_current=pwr.curr.value,
-            soc=pwr.charge_ah_perc.value,
-
-            # Capacity
-            remaining_capacity=pwr.charge_ah.value,
-            total_capacity=None,  # Not directly available in console protocol
-
-            # Power (calculated)
-            power=pwr.volt.value * pwr.curr.value if pwr.volt.value and pwr.curr.value else None,
-
-            # Temperatures
+            pack_voltage=volt,
+            pack_current=curr,
+            soc=soc,
+            remaining_capacity=get_val(pwr, "charge_ah"),
+            total_capacity=None,
+            power=power,
             temperatures=temperatures,
-            avg_temperature=pwr.avg_temp.value,
-
-            # Cell-level data
+            avg_temperature=get_val(pwr, "avg_temp"),
             cell_voltages=cell_voltages,
             cell_temps=cell_temps,
-
-            # Battery states
-            base_state=pwr.base_state.value,
-            volt_state=pwr.volt_state.value,
-            curr_state=pwr.curr_state.value,
-            temp_state=pwr.temp_state.value,
-
-            # Cell states
-            cell_volt_state=pwr.cell_volt_state.value,
-            cell_temp_state=pwr.cell_temp_state.value,
-
-            # Unit states
-            unit_volt_state=pwr.unit_volt_state.value,
-            unit_temp_state=pwr.unit_temp_state.value,
-
-            # Charge metrics
-            charge_ah=pwr.charge_ah.value,
-            charge_ah_perc=pwr.charge_ah_perc.value,
-            charge_wh=pwr.charge_wh_wh.value,
-            charge_wh_perc=pwr.charge_wh_perc.value,
-
-            # Voltage extremes
-            cell_volt_low=pwr.cell_volt_low.value,
-            cell_volt_high=pwr.cell_bolt_high.value,
-            unit_volt_low=pwr.unit_volt_low.value,
-            unit_volt_high=pwr.unit_volt_high.value,
-
-            # Temperature extremes
-            cell_temp_low=pwr.cell_temp_low.value,
-            cell_temp_high=pwr.cell_temp_high.value,
-            unit_temp_low=pwr.unit_temp_low.value,
-            unit_temp_high=pwr.unit_temp_high.value,
-
-            # DC voltage
-            dc_voltage=pwr.dc_voltage.value,
-            bat_voltage=pwr.bat_voltage.value,
-
-            # Error code
-            error_code=pwr.error_code.value,
-
-            # Alarms - empty for console protocol
+            base_state=get_val(pwr, "base_state"),
+            volt_state=get_val(pwr, "volt_state"),
+            curr_state=get_val(pwr, "curr_state"),
+            temp_state=get_val(pwr, "temp_state"),
+            cell_volt_state=get_val(pwr, "cell_volt_state"),
+            cell_temp_state=get_val(pwr, "cell_temp_state"),
+            unit_volt_state=get_val(pwr, "unit_volt_state"),
+            unit_temp_state=get_val(pwr, "unit_temp_state"),
+            charge_ah=get_val(pwr, "charge_ah"),
+            charge_ah_perc=get_val(pwr, "charge_ah_perc"),
+            charge_wh=get_val(pwr, "charge_wh_wh"),
+            charge_wh_perc=get_val(pwr, "charge_wh_perc"),
+            cell_volt_low=get_val(pwr, "cell_volt_low"),
+            cell_volt_high=get_val(pwr, "cell_bolt_high"),
+            unit_volt_low=get_val(pwr, "unit_volt_low"),
+            unit_volt_high=get_val(pwr, "unit_volt_high"),
+            dc_voltage=get_val(pwr, "dc_voltage"),
+            bat_voltage=get_val(pwr, "bat_voltage"),
+            error_code=get_val(pwr, "error_code"),
             alarms={},
-
-            # Cycle count - not available in console protocol
             cycle_count=None,
         )
 
     def __repr__(self) -> str:
-        """Return string representation."""
         return f"<TCPConsoleProtocol host={self.host} port={self.port}>"
