@@ -173,8 +173,7 @@ class TCPConsoleProtocol(ProtocolBase):
             dc_voltage=get_val(pwr, "dc_voltage"),
             bat_voltage=get_val(pwr, "bat_voltage"),
             error_code=get_val(pwr, "error_code"),
-            alarms={},
-            cycle_count=None,
+            
         )
 
     def __repr__(self) -> str:
