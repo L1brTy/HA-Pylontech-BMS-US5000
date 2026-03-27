@@ -7,9 +7,7 @@ DOMAIN = "pylontech"
 SCAN_INTERVAL = timedelta(seconds=30)
 PLATFORMS = ["sensor"]
 
-# --- LEGACY KONSTANTEN ---
-# Diese werden vom Original-Code (jtubb) im Hintergrund noch gesucht.
-# Wir stellen sie hier zur Verfügung, damit es beim Import nicht knallt.
+# Legacy Constants from original repo
 VARIANT_PYLONTECH = "Pylontech"
 VARIANT_SOK = "SOK"
 VARIANT_STANDARD = "Standard"
