@@ -16,31 +16,33 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-# Mapping für alle Sensoren (mit doppelter Absicherung für die Temperatur)
+# Mapping für alle Sensoren (exakt auf jtubb-Karte abgestimmt)
 SENSOR_MAPPINGS = {
     "pack_voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
     "state_of_charge": ("State Of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0),
     "power": ("Power", SensorDeviceClass.POWER, "W", SensorStateClass.MEASUREMENT, 0),
-    "temp": ("Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
-    "temperature": ("Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
+    "average_temperature": ("Average Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "lowest_cell_voltage": ("Lowest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "highest_cell_voltage": ("Highest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "total_capacity": ("Total Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
     "remaining_capacity": ("Remaining Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
     "barcode": ("Barcode", None, None, None, None),
     "base_state": ("Base State", None, None, None, None),
+    "system_status": ("System Status", None, None, None, None),
+    "protect_status": ("Protection Status", None, None, None, None),
+    "fault_status": ("Fault Status", None, None, None, None),
+    "alarm_status": ("Alarm Status", None, None, None, None),
+    "cycle_count": ("Cycle Count", None, None, SensorStateClass.TOTAL_INCREASING, 0),
     "temperature_cells_1_4": ("Temperature Cells 1 4", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "temperature_cells_5_8": ("Temperature Cells 5 8", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "temperature_cells_9_12": ("Temperature Cells 9 12", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "temperature_cells_13_16": ("Temperature Cells 13 16", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-# Alle 16 Zellen und 16 Temp-Sensoren registrieren
-for i in range(1, 17):
-    SENSOR_MAPPINGS[f"cell_voltage_{i}"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
-    SENSOR_MAPPINGS[f"temp_sensor_{i}"] = (f"Temperature Sensor {i}", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1)
-
+# Zellen 0 bis 15 anlegen (mit Namen 'cell_X_voltage')
+for i in range(16):
+    SENSOR_MAPPINGS[f"cell_{i}_voltage"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Pylontech sensors based on a config entry."""
