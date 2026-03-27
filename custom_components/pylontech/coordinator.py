@@ -32,13 +32,12 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten(self, d, pid):
-        # EXAKTE Namen für die Dashboard-Karte (jetzt auch mit Temperatur)
         res = {
             "pack_voltage": d.pack_voltage,
             "pack_current": d.pack_current,
             "state_of_charge": d.soc,
             "power": d.power,
-            "pack_temperature": d.temperatures.get("pack", 0.0),
+            "temperature": d.temperatures.get("pack", 0.0), # FIX: Heißt jetzt 'temperature'
             "lowest_cell_voltage": d.cell_volt_low,
             "highest_cell_voltage": d.cell_volt_high,
             "base_state": d.base_state,
@@ -47,7 +46,11 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "barcode": self.pack_barcodes.get(pid, "Unknown")
         }
         
-        # Zellen bei 1 anfangen lassen (WICHTIG für das Popup der Karte!)
+        # FIX: Wir zwingen HA dazu, 16 Zellen anzulegen, damit das Karten-Popup nicht abstürzt!
+        for i in range(1, 17):
+            res[f"cell_voltage_{i}"] = 0.0
+            res[f"temp_sensor_{i}"] = 0.0
+            
         for i, v in enumerate(d.cell_voltages, 1): res[f"cell_voltage_{i}"] = v
         for i, t in enumerate(d.cell_temps, 1): res[f"temp_sensor_{i}"] = t
         
