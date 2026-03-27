@@ -1,14 +1,13 @@
 {
   "domain": "pylontech",
-  "name": "Pylontech BMS",
-  "codeowners": [
-    "@jtubb"
-  ],
+  "name": "Pylontech US5000 (Waveshare Edition)",
+  "version": "1.5.0",
+  "documentation": "https://github.com/L1brTy/HA-Pylontech-BMS-US5000",
+  "issue_tracker": "https://github.com/L1brTy/HA-Pylontech-BMS-US5000/issues",
+  "dependencies": [],
+  "codeowners": ["@L1brTy"],
   "config_flow": true,
-  "documentation": "https://github.com/jtubb/HA-Pylontech-BMS",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/jtubb/HA-Pylontech-BMS/issues",
-  "loggers": ["pylontech"],
   "requirements": [],
-  "version": "1.2.0"
+  "description": "Optimierter Fork für Pylontech US5000 via Waveshare RS232-to-Ethernet Converter (Telnet/Console). Unterstützt Einzelpack-Identifizierung per Barcode und volle ISA-101 Dashboard-Kompatibilität."
 }
