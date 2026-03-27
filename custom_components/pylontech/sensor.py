@@ -22,7 +22,7 @@ SENSOR_MAPPINGS = {
     "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
     "state_of_charge": ("State Of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0),
     "power": ("Power", SensorDeviceClass.POWER, "W", SensorStateClass.MEASUREMENT, 0),
-    "temperature": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1), # FIX: Heißt jetzt 'temperature'
+    "temp": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "lowest_cell_voltage": ("Lowest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "highest_cell_voltage": ("Highest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "total_capacity": ("Total Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
@@ -35,9 +35,11 @@ SENSOR_MAPPINGS = {
     "temperature_cells_13_16": ("Temperature Cells 13 16", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-# FIX: Schleife bis 17, um 16 Zellen anzulegen!
-for i in range(1, 17):
+# FIX: Wir registrieren die Entitäten von 0 bis 15 (16 Stück), damit die Dashboard-Karte sie findet!
+for i in range(16):
     SENSOR_MAPPINGS[f"cell_voltage_{i}"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
+
+for i in range(4):
     SENSOR_MAPPINGS[f"temp_sensor_{i}"] = (f"Temperature Sensor {i}", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1)
 
 
@@ -74,7 +76,6 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         self._sensor_key = sensor_key
         self._pack_id = pack_id
         
-        # Zwingt HA die Entitäten exakt nach Dashboard-Norm zu benennen
         self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         
         barcode = "unknown"
