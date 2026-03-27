@@ -1,5 +1,6 @@
 {
-  "name": "Pylontech BMS",
+  "name": "Pylontech US5000 (Waveshare Edition)",
   "render_readme": true,
+  "country": "DE",
   "homeassistant": "2024.1.0"
 }
