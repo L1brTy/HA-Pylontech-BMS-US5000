@@ -7,7 +7,7 @@ DOMAIN = "pylontech"
 SCAN_INTERVAL = timedelta(seconds=30)
 PLATFORMS = ["sensor"]
 
-# Legacy-Konstanten für alte Code-Teile des jtubb-Originals
+# Legacy-Konstanten, damit alte Dateien nicht mehr abstürzen
 VARIANT_PYLONTECH = "Pylontech"
 VARIANT_SOK = "SOK"
 
