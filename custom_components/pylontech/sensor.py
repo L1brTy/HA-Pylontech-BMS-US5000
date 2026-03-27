@@ -38,11 +38,20 @@ for i in range(15):
     SENSOR_MAPPINGS[f"cell_voltage_{i}"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT)
     SENSOR_MAPPINGS[f"temp_sensor_{i}"] = (f"Temperature Sensor {i}", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT)
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Pylontech sensors based on a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    entities = []
     
+    # BULLETPROOF-WEICHE: Prüft, ob die Daten direkt oder als Dictionary (Box) kommen
+    domain_data = hass.data[DOMAIN][entry.entry_id]
+    
+    if isinstance(domain_data, dict):
+        coordinator = domain_data.get("coordinator")
+    else:
+        coordinator = domain_data
+
+    # Jetzt haben wir sicher den Koordinator und können den pack_count abfragen
+    entities = []
     for pid in range(1, coordinator.pack_count + 1):
         for s_key, (name, dev_class, unit, state_class) in SENSOR_MAPPINGS.items():
             desc = SensorEntityDescription(
@@ -56,6 +65,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             
     async_add_entities(entities)
 
+
 class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
     """Representation of a Pylontech BMS sensor."""
 
@@ -66,13 +76,11 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         self._sensor_key = sensor_key
         self._pack_id = pack_id
         
-        # WICHTIG: Erzeugt die exakte Entity-ID für die Dashboard-Karte
-        # Format: sensor.pylontech_pack_1_pack_voltage
+        # WICHTIG: Erzeugt die exakte Entity-ID für die Dashboard-Karte (ISA-101 Standard)
         self._attr_has_entity_name = True
         self._attr_unique_id = f"pylontech_pack_{pack_id}_{sensor_key}"
         self._attr_suggested_object_id = f"pylontech_pack_{pack_id}_{sensor_key}"
         
-        # Verknüpfung mit dem jeweiligen Batterie-Pack (Gerät)
         if pack_id <= len(coordinator.pack_device_infos):
             self._attr_device_info = coordinator.pack_device_infos[pack_id - 1]
 
