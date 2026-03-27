@@ -43,6 +43,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Pylontech sensors based on a config entry."""
     domain_data = hass.data[DOMAIN][entry.entry_id]
     
+    # Bulletproof Koordinator-Extraktion
     if isinstance(domain_data, dict):
         coordinator = domain_data.get("coordinator")
     else:
@@ -72,11 +73,23 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         self._sensor_key = sensor_key
         self._pack_id = pack_id
         
-        self._attr_has_entity_name = True
-        self._attr_unique_id = f"pylontech_pack_{pack_id}_{sensor_key}"
-        self._attr_suggested_object_id = f"pylontech_pack_{pack_id}_{sensor_key}"
+        # --- DER RETTER FÜR DIE DASHBOARD KARTE ---
+        # Zwingt HA, die Entität exakt so zu nennen, wie die Dashboard-Karte es braucht!
+        # Resultat: sensor.pylontech_pack_1_pack_voltage
+        self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         
-        if pack_id <= len(coordinator.pack_device_infos):
+        # Unique ID für HA intern (darf Barcode enthalten, stört das Dashboard nicht)
+        barcode = "unknown"
+        if hasattr(coordinator, "pack_barcodes") and pack_id in coordinator.pack_barcodes:
+            barcode = coordinator.pack_barcodes[pack_id]
+            
+        self._attr_unique_id = f"pylontech_{barcode}_{sensor_key}"
+        
+        # Sauberer Name in der UI
+        self._attr_has_entity_name = False
+        self._attr_name = f"Pylontech Pack {pack_id} {description.name}"
+        
+        if hasattr(coordinator, "pack_device_infos") and pack_id <= len(coordinator.pack_device_infos):
             self._attr_device_info = coordinator.pack_device_infos[pack_id - 1]
 
     @property
