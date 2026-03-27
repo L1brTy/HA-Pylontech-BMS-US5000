@@ -2,43 +2,26 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select Protocol Type",
-        "description": "Choose the communication protocol for your Pylontech US5000.\n\n**Console Protocol**: Recommended for Waveshare RS232-to-Ethernet converters (Standard Port 4196)\n**Binary Protocol**: Standard Pylontech binary frame protocol (Port 8234)",
+        "title": "Configure Pylontech US5000",
+        "description": "Enter the IP address of your Waveshare Gateway.",
         "data": {
-          "protocol_type": "Protocol Type"
+          "host": "IP Address",
+          "port": "Port"
         }
       },
       "connection": {
-        "title": "Configure Connection",
-        "description": "Enter connection details for your Pylontech US5000 (Waveshare Edition) using {protocol} protocol.",
-        "data": {
-          "host": "IP Address",
-          "port": "Port",
-          "device_name": "Device Name (e.g., 'US5000 Rack')",
-          "battery_variant": "Battery Variant"
-        }
+        "title": "Verifying Connection",
+        "description": "Attempting to connect to your Pylontech US5000...",
+        "data": {}
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to Waveshare Adapter",
-      "timeout": "Connection timed out",
-      "unknown": "Unexpected error occurred"
+      "timeout": "Connection timed out"
     },
     "abort": {
-      "already_configured": "This US5000 system is already configured",
-      "already_in_progress": "Configuration flow is already in progress"
+      "already_configured": "This US5000 system is already configured"
     },
     "flow_title": "Pylontech US5000 (Waveshare Edition)"
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Pylontech US5000 Options",
-        "description": "Configure options for your Pylontech US5000 (Waveshare Edition) integration.",
-        "data": {
-          "device_name": "Device Name"
-        }
-      }
-    }
   }
 }
