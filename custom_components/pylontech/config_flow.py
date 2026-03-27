@@ -26,7 +26,6 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_connection(self, user_input=None):
         errors = {}
         if user_input is not None:
-            # Hier testen wir die Verbindung
             protocol = TCPConsoleProtocol(self.host, self.port)
             try:
                 await protocol.connect()
@@ -53,7 +52,6 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class PylontechOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        # FIX: Wir nutzen super().__init__ statt self.config_entry zu setzen
         super().__init__(config_entry)
 
     async def async_step_init(self, user_input=None):
