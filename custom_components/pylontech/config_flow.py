@@ -43,16 +43,22 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:
                 errors["base"] = "cannot_connect"
 
-        return self.async_show_form(step_id="connection", errors=errors)
+        # FIX: Wir schicken das "protocol" als Placeholder mit, 
+        # damit alte Übersetzungen im Browser-Cache nicht mehr abstürzen!
+        return self.async_show_form(
+            step_id="connection", 
+            errors=errors,
+            description_placeholders={"protocol": "TCP Console"}
+        )
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         return PylontechOptionsFlowHandler(config_entry)
 
+
 class PylontechOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        # FIX: Home Assistant >= 2024.x erwartet das hier so:
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
