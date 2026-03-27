@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import DOMAIN, SCAN_INTERVAL
-from .protocol import ProtocolBase
+from .protocol.base import ProtocolBase
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,12 +32,18 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten(self, d, pid):
+        # Exakte Namensgebung für die jtubb Dashboard Karte!
         res = {
-            "pack_voltage": d.pack_voltage, "pack_current": d.pack_current,
-            "state_of_charge": d.soc, "power": d.power,
-            "pack_temperature": d.temperatures.get("pack", 0.0),
-            "cell_volt_low": d.cell_volt_low, "cell_volt_high": d.cell_volt_high,
-            "base_state": d.base_state, "total_capacity": 100.0,
+            "voltage": d.pack_voltage,
+            "current": d.pack_current,
+            "soc": d.soc,
+            "power": d.power,
+            "temp": d.temperatures.get("pack", 0.0),
+            "cell_volt_low": d.cell_volt_low,
+            "cell_volt_high": d.cell_volt_high,
+            "base_state": d.base_state,
+            "capacity": 100.0,  # US5000 Standard
+            "remain_capacity": round((d.soc / 100.0) * 100.0, 1) if d.soc else 0.0,
             "barcode": self.pack_barcodes.get(pid, "Unknown")
         }
         for i, v in enumerate(d.cell_voltages): res[f"cell_voltage_{i}"] = v
