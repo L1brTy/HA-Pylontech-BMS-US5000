@@ -32,13 +32,12 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten(self, d, pid):
-        # Alle Namen exakt wie von jtubb programmiert!
         res = {
             "pack_voltage": d.pack_voltage,
             "pack_current": d.pack_current,
             "state_of_charge": d.soc,
             "power": d.power,
-            "average_temperature": d.temperatures.get("pack", 0.0), # Hier sucht die Karte nach der Temperatur!
+            "average_temperature": d.temperatures.get("pack", 0.0),
             "lowest_cell_voltage": d.cell_volt_low,
             "highest_cell_voltage": d.cell_volt_high,
             "base_state": d.base_state,
@@ -52,14 +51,11 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "cycle_count": 0
         }
         
-        # Zellen von 0 bis 15 anlegen (16 Stück). WICHTIG: Name muss 'cell_X_voltage' sein
-        for i in range(16):
-            res[f"cell_{i}_voltage"] = 0.0
-            
+        # Nur die echten 15 Zellen (0 bis 14) vom BMS übernehmen! Keine Fake-Zelle mehr.
         for i, v in enumerate(d.cell_voltages): 
-            res[f"cell_{i}_voltage"] = v
+            if i < 15:
+                res[f"cell_{i}_voltage"] = v
             
-        # Temperatur-Blöcke (für das Temperatur-Popup)
         res["temperature_cells_1_4"] = d.cell_temps[0] if len(d.cell_temps) > 0 else 0.0
         res["temperature_cells_5_8"] = d.cell_temps[1] if len(d.cell_temps) > 1 else 0.0
         res["temperature_cells_9_12"] = d.cell_temps[2] if len(d.cell_temps) > 2 else 0.0
