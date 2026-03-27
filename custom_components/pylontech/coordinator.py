@@ -37,7 +37,7 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "pack_current": d.pack_current,
             "state_of_charge": d.soc,
             "power": d.power,
-            "temperature": d.temperatures.get("pack", 0.0), # FIX: Heißt jetzt 'temperature'
+            "temp": d.temperatures.get("pack", 0.0),
             "lowest_cell_voltage": d.cell_volt_low,
             "highest_cell_voltage": d.cell_volt_high,
             "base_state": d.base_state,
@@ -46,19 +46,23 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "barcode": self.pack_barcodes.get(pid, "Unknown")
         }
         
-        # FIX: Wir zwingen HA dazu, 16 Zellen anzulegen, damit das Karten-Popup nicht abstürzt!
-        for i in range(1, 17):
+        # FIX 1: Zellen fangen wieder bei 0 an (WICHTIG für den Delta V Button!)
+        # Wir legen zur Sicherheit 16 Werte (0 bis 15) an, damit die JS Karte nicht abstürzt.
+        for i in range(16):
             res[f"cell_voltage_{i}"] = 0.0
-            res[f"temp_sensor_{i}"] = 0.0
             
-        for i, v in enumerate(d.cell_voltages, 1): res[f"cell_voltage_{i}"] = v
-        for i, t in enumerate(d.cell_temps, 1): res[f"temp_sensor_{i}"] = t
+        for i, v in enumerate(d.cell_voltages): 
+            res[f"cell_voltage_{i}"] = v
+            
+        for i, t in enumerate(d.cell_temps): 
+            res[f"temp_sensor_{i}"] = t
+            
+        # FIX 2: Die exakt 4 Temperatur-Sensoren des US5000 den Boxen zuweisen!
+        res["temperature_cells_1_4"] = d.cell_temps[0] if len(d.cell_temps) > 0 else 0.0
+        res["temperature_cells_5_8"] = d.cell_temps[1] if len(d.cell_temps) > 1 else 0.0
+        res["temperature_cells_9_12"] = d.cell_temps[2] if len(d.cell_temps) > 2 else 0.0
+        res["temperature_cells_13_16"] = d.cell_temps[3] if len(d.cell_temps) > 3 else 0.0
         
-        if len(d.cell_temps) >= 15:
-            res["temperature_cells_1_4"] = round(sum(d.cell_temps[0:4])/4, 1)
-            res["temperature_cells_5_8"] = round(sum(d.cell_temps[4:8])/4, 1)
-            res["temperature_cells_9_12"] = round(sum(d.cell_temps[8:12])/4, 1)
-            res["temperature_cells_13_16"] = round(sum(d.cell_temps[12:15])/3, 1)
         return res
 
     async def detect_sensors(self):
