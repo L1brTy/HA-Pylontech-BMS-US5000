@@ -1,4 +1,4 @@
-"""Update coordinator for Pylontech BMS (US5000 Full-Feature Version)."""
+"""Update coordinator for Pylontech BMS (US5000 Ultra-Version)."""
 
 from __future__ import annotations
 
@@ -62,37 +62,42 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten_battery_data(self, data: BatteryData) -> dict[str, Any]:
-        """Mapping für US5000 - Einzelzellen, Gruppen-Temps und Card-Support."""
+        """Mapping für US5000 - Perfekt für die Pylontech-Overview-Card."""
         result = {}
 
-        # Basis-Werte für die Card
+        # 1. HAUPTWERTE (Namen exakt wie von der Card gefordert)
         if data.pack_voltage is not None: result["pack_voltage"] = data.pack_voltage
         if data.pack_current is not None: result["pack_current"] = data.pack_current
         if data.soc is not None: result["state_of_charge"] = data.soc 
         if data.power is not None: result["power"] = data.power
         
-        # Kapazität & Ah Anzeige
+        # 2. KAPAZITÄT
         if data.remaining_capacity is not None: result["remaining_capacity"] = data.remaining_capacity
-        result["total_capacity"] = 100.0
+        result["total_capacity"] = 100.0 # US5000 Standard
 
-        # TEMPERATUREN
+        # 3. TEMPERATUREN (Trigger für die Hauptansicht & Klick-Popup)
         p_temp = data.temperatures.get("pack")
         if p_temp is not None:
-            result["pack_temperature"] = p_temp  # Wichtig für die Overview-Card
+            result["pack_temperature"] = p_temp
             result["temp_pack"] = p_temp
 
-        # Extremwerte für Delta-V Anzeige
+        # 4. DELTA-V & EXTREMWERTE (Für die Anzeige oben rechts in der Card)
         if data.cell_volt_low is not None: result["cell_volt_low"] = data.cell_volt_low
         if data.cell_volt_high is not None: result["cell_volt_high"] = data.cell_volt_high
         if data.cell_temp_low is not None: result["cell_temp_low"] = data.cell_temp_low
         if data.cell_temp_high is not None: result["cell_temp_high"] = data.cell_temp_high
 
-        # 1. EINZEL-TEMPERATUREN (für die Heatmap beim Klick auf "Temperature")
-        # US5000 hat 15 Sensoren
+        # 5. EINZEL-SPANNUNGEN (Heatmap 'Delta V')
+        for idx, voltage in enumerate(data.cell_voltages):
+            result[f"cell_voltage_{idx}"] = voltage
+
+        # 6. EINZEL-TEMPERATUREN (Heatmap 'Temperature' Popup)
+        # Die Card verlangt 'temp_sensor_X'
         for idx, temp in enumerate(data.cell_temps):
             result[f"temp_sensor_{idx}"] = temp
 
-        # 2. GRUPPEN-TEMPERATUREN (Durchschnittswerte für die 4 Hauptfelder)
+        # 7. GRUPPEN-TEMPERATUREN (Die 4 Blöcke auf der Frontseite der Card)
+        # Wir berechnen Durchschnitte für 1-4, 5-8, 9-12, 13-16
         if len(data.cell_temps) >= 4:
             result["temperature_cells_1_4"] = round(sum(data.cell_temps[0:4]) / 4, 1)
         if len(data.cell_temps) >= 8:
@@ -100,14 +105,9 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if len(data.cell_temps) >= 12:
             result["temperature_cells_9_12"] = round(sum(data.cell_temps[8:12]) / 4, 1)
         if len(data.cell_temps) >= 15:
-            # Die letzte Gruppe hat meist nur 3 Zellen (13, 14, 15)
             result["temperature_cells_13_16"] = round(sum(data.cell_temps[12:15]) / 3, 1)
 
-        # Einzelzellen Spannungen (Heatmap beim Klick auf "Delta V")
-        for idx, voltage in enumerate(data.cell_voltages):
-            result[f"cell_voltage_{idx}"] = voltage
-
-        # Status & Fehler
+        # 8. STATUS
         if data.base_state is not None: result["base_state"] = data.base_state
         if data.error_code is not None: result["error_code"] = data.error_code
 
