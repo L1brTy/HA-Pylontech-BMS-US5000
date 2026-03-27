@@ -32,34 +32,34 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten(self, d, pid):
+        # Alle Namen exakt wie von jtubb programmiert!
         res = {
             "pack_voltage": d.pack_voltage,
             "pack_current": d.pack_current,
             "state_of_charge": d.soc,
             "power": d.power,
-            "temp": d.temperatures.get("pack", 0.0),          # Fallback 1 für das Dashboard
-            "temperature": d.temperatures.get("pack", 0.0),   # Fallback 2 für das Dashboard
+            "average_temperature": d.temperatures.get("pack", 0.0), # Hier sucht die Karte nach der Temperatur!
             "lowest_cell_voltage": d.cell_volt_low,
             "highest_cell_voltage": d.cell_volt_high,
             "base_state": d.base_state,
             "total_capacity": 100.0,
             "remaining_capacity": round((d.soc / 100.0) * 100.0, 1) if d.soc else 0.0,
-            "barcode": self.pack_barcodes.get(pid, "Unknown")
+            "barcode": self.pack_barcodes.get(pid, "Unknown"),
+            "system_status": "Normal",
+            "protect_status": "Normal",
+            "fault_status": "Normal",
+            "alarm_status": "Normal",
+            "cycle_count": 0
         }
         
-        # Lege zwingend die Zellen 1 bis 16 an (verhindert Absturz des Delta V Popups!)
-        for i in range(1, 17):
-            res[f"cell_voltage_{i}"] = 0.0
-            res[f"temp_sensor_{i}"] = 0.0
+        # Zellen von 0 bis 15 anlegen (16 Stück). WICHTIG: Name muss 'cell_X_voltage' sein
+        for i in range(16):
+            res[f"cell_{i}_voltage"] = 0.0
             
-        # Fülle die echten Werte in die Zellen 1 bis 15
-        for i, v in enumerate(d.cell_voltages, 1): 
-            res[f"cell_voltage_{i}"] = v
+        for i, v in enumerate(d.cell_voltages): 
+            res[f"cell_{i}_voltage"] = v
             
-        for i, t in enumerate(d.cell_temps, 1):
-            res[f"temp_sensor_{i}"] = t
-            
-        # Weise die 4 echten Temperatur-Sensoren des US5000 dem Popup zu
+        # Temperatur-Blöcke (für das Temperatur-Popup)
         res["temperature_cells_1_4"] = d.cell_temps[0] if len(d.cell_temps) > 0 else 0.0
         res["temperature_cells_5_8"] = d.cell_temps[1] if len(d.cell_temps) > 1 else 0.0
         res["temperature_cells_9_12"] = d.cell_temps[2] if len(d.cell_temps) > 2 else 0.0
