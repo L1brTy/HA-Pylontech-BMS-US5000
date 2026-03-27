@@ -10,45 +10,41 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        if user_input is not None:
-            self.host = user_input["host"]
-            self.port = user_input["port"]
-            return await self.async_step_connection()
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({
-                vol.Required("host", default="10.10.10.200"): str,
-                vol.Required("port", default=4196): int,
-            })
-        )
-
-    async def async_step_connection(self, user_input=None):
         errors = {}
+        
+        # Sobald der User im ersten Fenster auf "Senden" klickt:
         if user_input is not None:
-            protocol = TCPConsoleProtocol(self.host, self.port)
+            host = user_input["host"]
+            port = user_input["port"]
+            
+            # Verbindung sofort im Hintergrund testen
+            protocol = TCPConsoleProtocol(host, port)
             try:
                 await protocol.connect()
                 info = await protocol.get_device_info()
                 await protocol.disconnect()
                 
+                # Wenn erfolgreich: Integration sofort erstellen (kein 2. Fenster!)
                 return self.async_create_entry(
                     title=f"US5000 Pack ({info.barcode})",
                     data={
-                        "host": self.host,
-                        "port": self.port,
+                        "host": host,
+                        "port": port,
                         "barcode": info.barcode
                     }
                 )
             except Exception:
+                # Nur wenn es fehlschlägt, bleiben wir im gleichen Fenster und zeigen einen Fehler
                 errors["base"] = "cannot_connect"
 
-        # FIX: Wir schicken das "protocol" als Placeholder mit, 
-        # damit alte Übersetzungen im Browser-Cache nicht mehr abstürzen!
+        # Das ist das einzige Fenster, das der User jemals sieht:
         return self.async_show_form(
-            step_id="connection", 
-            errors=errors,
-            description_placeholders={"protocol": "TCP Console"}
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required("host", default="10.10.10.200"): str,
+                vol.Required("port", default=4196): int,
+            }),
+            errors=errors
         )
 
     @staticmethod
