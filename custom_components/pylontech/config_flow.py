@@ -3,7 +3,7 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import DOMAIN, ConnectionType
+from .const import DOMAIN
 from .protocol.tcp_console import TCPConsoleProtocol
 
 class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -18,7 +18,7 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("host"): str,
+                vol.Required("host", default="10.10.10.200"): str,
                 vol.Required("port", default=4196): int,
             })
         )
@@ -52,7 +52,8 @@ class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class PylontechOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        super().__init__(config_entry)
+        # FIX: Home Assistant >= 2024.x erwartet das hier so:
+        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
