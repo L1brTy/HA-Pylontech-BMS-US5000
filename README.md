@@ -1,179 +1,47 @@
-# Home Assistant - Pylontech BMS Integration
+# Pylontech BMS US5000 (Waveshare Edition)
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-[![HACS][hacs-shield]][hacs]
+Dieser Home Assistant Custom Component ist ein spezialisierter **Fork** von [jtubb/HA-Pylontech-BMS](https://github.com/jtubb/HA-Pylontech-BMS). 
 
-A Home Assistant custom component for monitoring Pylontech (and compatible) high-voltage Battery Management Systems (BMS) via TCP console and binary protocols.
+Er wurde grundlegend umgebaut und optimiert, um die Kommunikation mit **Pylontech US5000** Batterien über einen **Waveshare RS232-to-Ethernet Konverter** (Anschluss am Console-Port der Batterie) zu ermöglichen.
 
-[releases-shield]: https://img.shields.io/github/release/jtubb/HA-Pylontech-BMS.svg?style=for-the-badge
-[releases]: https://github.com/jtubb/HA-Pylontech-BMS/releases
-[commits-shield]: https://img.shields.io/github/commit-activity/y/jtubb/HA-Pylontech-BMS.svg?style=for-the-badge
-[commits]: https://github.com/jtubb/HA-Pylontech-BMS/commits/main
-[hacs-shield]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge
-[hacs]: https://github.com/hacs/integration
-[license-shield]: https://img.shields.io/github/license/jtubb/HA-Pylontech-BMS.svg?style=for-the-badge
+> [!WARNING]  
+> Diese Integration wurde **ausschließlich mit Pylontech US5000** Modellen getestet. Die Kompatibilität mit älteren Modellen (US2000/US3000) ist aufgrund der Protokoll-Anpassungen nicht garantiert.
 
-## Features
+## 🚀 Key Features & Verbesserungen
 
-- **Multi-Pack Support**: Creates separate devices for each battery pack with grouped entities
-- **Per-Pack Sensor Detection**: Dynamically discovers available sensors for each pack
-- **Comprehensive Monitoring**:
-  - Cell voltages (individual cells)
-  - Cell temperatures
-  - Pack voltage, current, and power
-  - State of Charge (SOC)
-  - Remaining and total capacity
-  - Cycle count
-  - Alarm states
-- **Customizable Device Names**: Configure custom base names for your battery devices
-- **Little-Endian Protocol Support**: Correctly parses binary data from BMS hardware
+* **Entwickelt von Gemini (AI):** Dieser Fork wurde mit intensiver Unterstützung von Google Gemini erstellt und für die spezifischen Eigenheiten des US5000 Konsolen-Protokolls optimiert.
+* **Individuelle Pack-Identität:** Jedes Batterie-Pack wird automatisch mit seinem echten **Barcode (Seriennummer)** im Namen registriert (z.B. `Pylontech US5000 Pack 1 (P225...)`). Dies ermöglicht eine eindeutige Zuordnung im Rack.
+* **15-Zellen Support:** Korrektes Auslesen aller 15 Einzelspannungen des US5000.
+* **SOC & Power Fix:** Korrigierter Parser für die Konsolenausgabe des US5000, um falsche 0% SOC-Werte und falsche Spaltenzuordnungen zu vermeiden.
+* **ISA-101 Dashboard Ready:** Die Sensor-Entitäten werden automatisch so benannt (`sensor.pylontech_pack_X_...`), dass sie nativ mit der [Pylontech Battery Overview Card](https://github.com/jtubb/Pylontech-Battery-Card) funktionieren.
+* **Detailliertes Monitoring:** * Einzelzell-Spannungen (Zelle 0-14).
+    * Einzelzell-Temperaturen (Heatmap-Support).
+    * Durchschnittliche Gruppen-Temperaturen für die schnelle Übersicht.
 
-## Supported Hardware
+## 🛠 Hardware-Konfiguration
 
-- Pylontech high-voltage BMS
-- SOK batteries with compatible BMS
-- Pylontech BMS using console commands
-- Other manufacturers using similar binary protocol
+Getestet mit:
+* **Batterie:** Pylontech US5000.
+* **Adapter:** Waveshare RS232/485 TO ETH (B) konfiguriert als TCP-Server.
+* **Anschluss:** RS232 Kabel am Console-Port (RJ11/RJ12) der Pylontech.
+* **Standard-Port:** `4196` (Telnet-Protokoll).
 
-## Installation
+## 📦 Installation
 
-### HACS (Recommended)
+### Manuell
+1. Lade dieses Repository herunter.
+2. Kopiere den Ordner `custom_components/pylontech` in deinen Home Assistant `config/custom_components/` Ordner.
+3. Starte Home Assistant neu.
+4. Füge die Integration unter **Einstellungen -> Geräte & Dienste** hinzu (IP des Waveshare-Adapters und Port angeben).
 
-1. Add this repository as a custom repository in HACS
-2. Search for "Pylontech BMS" in HACS
-3. Click Install
-4. Restart Home Assistant
+## 📊 Dashboard Visualisierung
 
-### Manual Installation
-
-1. Copy the `pylontech` folder to `custom_components/` in your Home Assistant config directory
-2. Restart Home Assistant
-
-## Configuration
-
-1.   Go to **Settings → Devices & Services**
-2.   Click **+ Add Integration**
-3.   Search for **Pylontech BMS**
-4.   Select Console Protocol for v3 and above BMS devices, select Binary Protocol for all other devices.
-5.   Enter your BMS connection details:
-       - **Host**: IP address of your BMS
-       - **Port**: TCP port (default: 1234)
-       - **Device Name**: Custom base name for devices (default: "Battery")
-
-## Device Structure
-
-The integration creates one device per battery pack:
-
-```
-Device: SOK Battery Pack 1
-├── Pack Voltage
-├── Pack Current
-├── State of Charge
-├── Cell 0 Voltage
-├── Cell 1 Voltage
-├── ...
-└── Cell Temperature sensors
-
-Device: SOK Battery Pack 2
-├── (Same sensor structure)
-└── ...
-```
-
-## Sensor Examples
-
-Each pack provides approximately 56 sensors (varies by BMS model):
-
-- **Pack-level**: voltage, current, power, SOC, capacity
-- **Cell voltages**: Individual cell readings (typically 16 cells)
-- **Temperatures**: Cell and pack temperature sensors (typically 6 sensors)
-- **States**: Base state, voltage state, current state, temperature state
-- **Alarms**: Various alarm conditions
-- **Cycle count**: Battery cycle counter
-
-## Technical Details
-
-### Protocol
-
-This integration uses the Pylontech TCP binary and console protocol:
-- Default port: 1234
-- Console protocol for Firmware version 3+
-- Binary protocol for Firmware version 2.0 or 2.5 with ASCII hex encoding
-- Frame-based communication with CRC validation
-- Only tested on Firmware version 2.5
-
-### Architecture
-
-- **Protocol Layer** (`protocol/tcp_binary.py`): Low-level BMS communication
-- **Coordinator** (`coordinator.py`): Data polling and device management
-- **Sensors** (`sensor.py`): Home Assistant entity creation
-- **Models** (`models.py`): Data structures for battery information
-
-## Troubleshooting
-
-### Enable Debug Logging
-
-Add to `configuration.yaml`:
+Für die beste Darstellung (inkl. Heatmaps für Zellen und Temperaturen) empfehlen wir die [Pylontech-Battery-Card](https://github.com/jtubb/Pylontech-Battery-Card). Beispiel-Konfiguration:
 
 ```yaml
-logger:
-  default: info
-  logs:
-    custom_components.pylontech: debug
-```
-
-### Common Issues
-
-**Wrong number of sensors**:
-- Check debug logs for parsing information
-- Verify BMS protocol compatibility
-
-**Connection issues**:
-- Verify IP address and port
-- Check network connectivity to BMS
-- Ensure only one client connects to BMS at a time
-
-## Development
-
-See `claudedocs/` directory for detailed technical documentation:
-- `little_endian_fix.md`: Byte order correction details
-- `cell_count_bug_fix.md`: Sensor detection improvements
-- `diagnostic_logging_guide.md`: Troubleshooting guide
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/jtubb/HA-Pylontech-BMS.git
-cd HA-Pylontech-BMS
-
-# Install in development mode
-ln -s $(pwd) ~/.homeassistant/custom_components/pylontech
-
-# Enable debug logging in configuration.yaml
-logger:
-  default: info
-  logs:
-    custom_components.pylontech: debug
-```
-
-## Credits
-
-- Original protocol implementation based on [PylonToMQTT](https://github.com/ClassicDIY/PylonToMQTT/blob/main/Code/Python/support/pylontech.py)
-- Home Assistant integration adapted from [mletenay/home-assistant-pylontech](https://github.com/mletenay/home-assistant-pylontech)
-- Multi-pack architecture and protocol enhancements contributed by [Claude Code](https://claude.ai/code)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+type: custom:pylontech-battery-overview
+entity_prefix: sensor.pylontech
+pack_count: 2  # Anzahl deiner installierten Packs
+title: "US5000 Speicher-System"
+soc_warning: 20
+soc_alarm: 10
