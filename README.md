@@ -1,6 +1,6 @@
 # Pylontech BMS US5000 (Waveshare Edition)
 
-[![Open your Home Assistant instance and open a repository window in HACS.](https://my.homeassistant.io/badges/hacs_repository.svg)](https://my.homeassistant.io/redirect/hacs_repository/?category=integration&repository=L1brTy/HA-Pylontech-BMS-US5000)
+[![HACS Add Repository](https://img.shields.io/badge/HACS-Add%20Repository-orange.svg?style=for-the-badge&logo=homeassistant)](https://my.homeassistant.io/redirect/hacs_repository/?category=integration&repository=L1brTy/HA-Pylontech-BMS-US5000)
 
 Dieser Home Assistant Custom Component ist ein spezialisierter **Fork** von [jtubb/HA-Pylontech-BMS](https://github.com/jtubb/HA-Pylontech-BMS). 
 
@@ -24,27 +24,27 @@ Er wurde grundlegend optimiert, um die Kommunikation mit **Pylontech US5000** Ba
 
 * **Batterie:** Pylontech US5000 (Master-Pack am Console-Port verbunden).
 * **Konverter:** Waveshare RS232 TO ETH (B) oder ähnliche Gateways.
-* **Einstellungen:** * Protokoll: TCP Server
-    * Port: `4196` (Standard für Telnet/Console)
-    * Baudrate: `1200` (Standard Console-Port Pylontech)
+* **Einstellungen:**
+    * Protokoll: **TCP Server**
+    * Port: **4196** (Standard für Telnet/Console)
+    * Baudrate: **1200** (Standard Console-Port Pylontech)
 
 ## 📦 Installation
 
-### 1. Über HACS (Empfohlen)
+### 1. Über den Button (Empfohlen)
+Klicke auf den "HACS Add Repository" Button oben. Falls dein Browser den Dienst `my.homeassistant.io` blockiert, nutze die manuelle Installation.
+
+### 2. Manuelle Installation via HACS
 1. Öffne HACS in deiner Home Assistant Instanz.
 2. Klicke auf die drei Punkte oben rechts -> **Benutzerdefinierte Repositories**.
-3. Füge die URL `https://github.com/L1brTy/HA-Pylontech-BMS-US5000` hinzu (Kategorie: **Integration**).
-4. Suche nach "Pylontech US5000 (Waveshare Edition)" und klicke auf Herunterladen.
-5. Starte Home Assistant neu.
+3. Füge die URL `https://github.com/L1brTy/HA-Pylontech-BMS-US5000` hinzu.
+4. Wähle als Kategorie **Integration**.
+5. Suche nach "Pylontech US5000 (Waveshare Edition)" und klicke auf Herunterladen.
+6. Starte Home Assistant neu.
 
-### 2. Manuell
-1. Lade das Repository als ZIP herunter.
-2. Kopiere den Ordner `custom_components/pylontech` in dein Home Assistant `config/custom_components/` Verzeichnis.
-3. Starte Home Assistant neu.
+## 📊 Dashboard Visualisierung
 
-## 📊 Dashboard Konfiguration
-
-Für eine perfekte Visualisierung (wie im Pylontech-Frontplatten-Design) empfehlen wir die Nutzung der `custom:pylontech-battery-overview` Karte:
+Für eine perfekte Visualisierung empfehlen wir die Nutzung der `custom:pylontech-battery-overview` Karte:
 
 ```yaml
 type: custom:pylontech-battery-overview
