@@ -1,45 +1,16 @@
-"""Constants for the Pylontech BMS component."""
+"""Constants for Pylontech US5000 (Waveshare Edition)."""
+from __future__ import annotations
 from datetime import timedelta
-from enum import Enum
-
-from homeassistant.const import Platform
+from enum import StrEnum
 
 DOMAIN = "pylontech"
-
-PLATFORMS = [Platform.SENSOR]
-
-DEFAULT_NAME = "Pylontech BMS"
 SCAN_INTERVAL = timedelta(seconds=30)
+PLATFORMS = ["sensor"]
 
-KEY_COORDINATOR = "coordinator"
+class ConnectionType(StrEnum):
+    TCP_CONSOLE = "TCP Console"
+    BINARY = "Binary"
 
-# Configuration keys
-CONF_PROTOCOL_TYPE = "protocol_type"
-CONF_BATTERY_VARIANT = "battery_variant"
-CONF_DEVICE_NAME = "device_name"
-
-# Protocol types
-PROTOCOL_CONSOLE = "console"
-PROTOCOL_BINARY = "binary"
-
-# Default ports
-DEFAULT_PORT_CONSOLE = 1234
-DEFAULT_PORT_BINARY = 8234
-
-# Battery variants
-VARIANT_STANDARD = "standard"
-VARIANT_SOK = "sok"
-
-
-class ConnectionType(Enum):
-    """BMS connection types."""
-
-    TCP_CONSOLE = "tcp_console"
-    TCP_BINARY = "tcp_binary"
-
-
-class BatteryVariant(Enum):
-    """Battery manufacturer variants."""
-
-    PYLONTECH_STANDARD = "standard"
-    SOK_48V = "sok"
+class BatteryVariant(StrEnum):
+    PYLONTECH_STANDARD = "Pylontech Standard"
+    US5000 = "US5000"
