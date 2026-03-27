@@ -7,6 +7,10 @@ DOMAIN = "pylontech"
 SCAN_INTERVAL = timedelta(seconds=30)
 PLATFORMS = ["sensor"]
 
+# Legacy-Konstanten für alte Code-Teile des jtubb-Originals
+VARIANT_PYLONTECH = "Pylontech"
+VARIANT_SOK = "SOK"
+
 class ConnectionType(StrEnum):
     TCP_CONSOLE = "TCP Console"
     BINARY = "Binary"
@@ -14,3 +18,4 @@ class ConnectionType(StrEnum):
 class BatteryVariant(StrEnum):
     PYLONTECH_STANDARD = "Pylontech Standard"
     US5000 = "US5000"
+    SOK = "SOK"
