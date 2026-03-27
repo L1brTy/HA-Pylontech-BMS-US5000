@@ -78,7 +78,7 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # TEMPERATUREN
         p_temp = data.temperatures.get("pack")
         if p_temp is not None:
-            result["pack_temperature"] = p_temp  # Trigger für Dashboard
+            result["pack_temperature"] = p_temp  # Wichtig für die Overview-Card
             result["temp_pack"] = p_temp
 
         # Extremwerte für Delta-V Anzeige
@@ -87,12 +87,12 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if data.cell_temp_low is not None: result["cell_temp_low"] = data.cell_temp_low
         if data.cell_temp_high is not None: result["cell_temp_high"] = data.cell_temp_high
 
-        # 1. EINZEL-TEMPERATUREN (für die Heatmap beim Klick)
+        # 1. EINZEL-TEMPERATUREN (für die Heatmap beim Klick auf "Temperature")
+        # US5000 hat 15 Sensoren
         for idx, temp in enumerate(data.cell_temps):
             result[f"temp_sensor_{idx}"] = temp
 
-        # 2. GRUPPEN-TEMPERATUREN (für die 4 Felder in der Karten-Übersicht)
-        # Wir berechnen den Durchschnitt für jede Gruppe
+        # 2. GRUPPEN-TEMPERATUREN (Durchschnittswerte für die 4 Hauptfelder)
         if len(data.cell_temps) >= 4:
             result["temperature_cells_1_4"] = round(sum(data.cell_temps[0:4]) / 4, 1)
         if len(data.cell_temps) >= 8:
@@ -100,9 +100,10 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if len(data.cell_temps) >= 12:
             result["temperature_cells_9_12"] = round(sum(data.cell_temps[8:12]) / 4, 1)
         if len(data.cell_temps) >= 15:
+            # Die letzte Gruppe hat meist nur 3 Zellen (13, 14, 15)
             result["temperature_cells_13_16"] = round(sum(data.cell_temps[12:15]) / 3, 1)
 
-        # Einzelzellen Spannungen (Heatmap Popups)
+        # Einzelzellen Spannungen (Heatmap beim Klick auf "Delta V")
         for idx, voltage in enumerate(data.cell_voltages):
             result[f"cell_voltage_{idx}"] = voltage
 
