@@ -16,13 +16,13 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-# EXAKTES Mapping für die Dashboard-Karte!
+# Mapping für alle Sensoren, exakt auf jtubb's Dashboard abgestimmt
 SENSOR_MAPPINGS = {
     "pack_voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
     "state_of_charge": ("State Of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0),
     "power": ("Power", SensorDeviceClass.POWER, "W", SensorStateClass.MEASUREMENT, 0),
-    "temperature": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
+    "pack_temperature": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "lowest_cell_voltage": ("Lowest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "highest_cell_voltage": ("Highest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "total_capacity": ("Total Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
@@ -35,11 +35,14 @@ SENSOR_MAPPINGS = {
     "temperature_cells_13_16": ("Temperature Cells 13 16", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-for i in range(15):
+# Dynamische Ergänzung für die 15 Einzelzellen (von 1 bis 15!)
+for i in range(1, 16):
     SENSOR_MAPPINGS[f"cell_voltage_{i}"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
     SENSOR_MAPPINGS[f"temp_sensor_{i}"] = (f"Temperature Sensor {i}", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1)
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Pylontech sensors based on a config entry."""
     domain_data = hass.data[DOMAIN][entry.entry_id]
     
     if isinstance(domain_data, dict):
@@ -62,13 +65,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
             
     async_add_entities(entities)
 
+
 class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
+    """Representation of a Pylontech BMS sensor."""
     def __init__(self, coordinator, description, sensor_key, pack_id):
         super().__init__(coordinator)
         self.entity_description = description
         self._sensor_key = sensor_key
         self._pack_id = pack_id
         
+        # Zwingt HA die Entitäten exakt nach Dashboard-Norm zu benennen
         self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         
         barcode = "unknown"
