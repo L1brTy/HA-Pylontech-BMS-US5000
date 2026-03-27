@@ -16,15 +16,17 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-# Mapping: key -> (Name, DeviceClass, Unit, StateClass, Precision)
+# Mapping: Exakt auf die jtubb Dashboard-Karte abgestimmt!
 SENSOR_MAPPINGS = {
-    "pack_voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
-    "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
-    "state_of_charge": ("State Of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0),
+    "voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
+    "current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
+    "soc": ("State Of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0),
     "power": ("Power", SensorDeviceClass.POWER, "W", SensorStateClass.MEASUREMENT, 0),
-    "pack_temperature": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
+    "temp": ("Pack Temperature", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
     "cell_volt_low": ("Lowest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "cell_volt_high": ("Highest Cell Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
+    "capacity": ("Total Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
+    "remain_capacity": ("Remaining Capacity", None, "Ah", SensorStateClass.MEASUREMENT, 1),
     "barcode": ("Barcode", None, None, None, None),
     "base_state": ("Base State", None, None, None, None),
     "temperature_cells_1_4": ("Temperature Cells 1 4", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
@@ -33,7 +35,7 @@ SENSOR_MAPPINGS = {
     "temperature_cells_13_16": ("Temperature Cells 13 16", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-# Dynamische Ergänzung für 15 Einzelzellen (Spannung: 3 Stellen, Temperatur: 1 Stelle)
+# Dynamische Ergänzung für 15 Einzelzellen
 for i in range(15):
     SENSOR_MAPPINGS[f"cell_voltage_{i}"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
     SENSOR_MAPPINGS[f"temp_sensor_{i}"] = (f"Temperature Sensor {i}", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1)
@@ -75,10 +77,9 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         
         # --- DER RETTER FÜR DIE DASHBOARD KARTE ---
         # Zwingt HA, die Entität exakt so zu nennen, wie die Dashboard-Karte es braucht!
-        # Resultat: sensor.pylontech_pack_1_pack_voltage
         self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         
-        # Unique ID für HA intern (darf Barcode enthalten, stört das Dashboard nicht)
+        # Unique ID für HA intern (darf Barcode enthalten)
         barcode = "unknown"
         if hasattr(coordinator, "pack_barcodes") and pack_id in coordinator.pack_barcodes:
             barcode = coordinator.pack_barcodes[pack_id]
