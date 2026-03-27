@@ -1,222 +1,68 @@
-"""Config flow to configure Pylontech BMS integration."""
-
+"""Config flow for Pylontech US5000 (Waveshare Edition)."""
 from __future__ import annotations
-
-import asyncio
-import logging
-from typing import Any
-
 import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
+from .const import DOMAIN, ConnectionType
+from .protocol.tcp_console import TCPConsoleProtocol
 
-from .const import (
-    CONF_BATTERY_VARIANT,
-    CONF_DEVICE_NAME,
-    CONF_PROTOCOL_TYPE,
-    DEFAULT_NAME,
-    DEFAULT_PORT_BINARY,
-    DEFAULT_PORT_CONSOLE,
-    DOMAIN,
-    PROTOCOL_BINARY,
-    PROTOCOL_CONSOLE,
-    VARIANT_SOK,
-    VARIANT_STANDARD,
-)
-from .protocol import TCPBinaryProtocol, TCPConsoleProtocol
-
-_LOGGER = logging.getLogger(__name__)
-
-
-class PylontechFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a Pylontech BMS config flow."""
-
+class PylontechConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
-    def __init__(self) -> None:
-        """Initialize the config flow."""
-        self.protocol_type: str | None = None
-        self.config_data: dict[str, Any] = {}
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> PylontechOptionsFlowHandler:
-        """Get the options flow for this handler."""
-        return PylontechOptionsFlowHandler(config_entry)
-
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle protocol type selection."""
-        errors = {}
-
+    async def async_step_user(self, user_input=None):
         if user_input is not None:
-            self.protocol_type = user_input[CONF_PROTOCOL_TYPE]
+            self.host = user_input["host"]
+            self.port = user_input["port"]
             return await self.async_step_connection()
-
-        # Protocol selection schema
-        data_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_PROTOCOL_TYPE, default=PROTOCOL_CONSOLE
-                ): vol.In(
-                    {
-                        PROTOCOL_CONSOLE: "Console Protocol (Text-based)",
-                        PROTOCOL_BINARY: "Binary Protocol (Frame-based)",
-                    }
-                )
-            }
-        )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-            description_placeholders={
-                "console_desc": "Standard TCP console (port 4196)",
-                "binary_desc": "Binary frame protocol (port 8234)",
-            },
+            data_schema=vol.Schema({
+                vol.Required("host"): str,
+                vol.Required("port", default=4196): int,
+            })
         )
 
-    async def async_step_connection(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle connection configuration."""
+    async def async_step_connection(self, user_input=None):
         errors = {}
-
         if user_input is not None:
-            # Store connection data
-            self.config_data.update(user_input)
-            self.config_data[CONF_PROTOCOL_TYPE] = self.protocol_type
-
-            # Validate connection
+            # Hier testen wir die Verbindung
+            protocol = TCPConsoleProtocol(self.host, self.port)
             try:
-                device_info = await self._test_connection()
-
-                # Set unique ID based on barcode
-                await self.async_set_unique_id(device_info.barcode)
-                self._abort_if_unique_id_configured()
-
-                # Create entry
+                await protocol.connect()
+                info = await protocol.get_device_info()
+                await protocol.disconnect()
+                
                 return self.async_create_entry(
-                    title=f"{DEFAULT_NAME} ({device_info.barcode})",
-                    data=self.config_data,
+                    title=f"US5000 Pack ({info.barcode})",
+                    data={
+                        "host": self.host,
+                        "port": self.port,
+                        "barcode": info.barcode
+                    }
                 )
-
-            except asyncio.TimeoutError:
-                errors["base"] = "timeout"
-            except ConnectionRefusedError:
+            except Exception:
                 errors["base"] = "cannot_connect"
-            except Exception as err:
-                _LOGGER.exception("Unexpected error during connection test: %s", err)
-                errors["base"] = "unknown"
 
-        # Build schema based on protocol type
-        default_port = (
-            DEFAULT_PORT_CONSOLE
-            if self.protocol_type == PROTOCOL_CONSOLE
-            else DEFAULT_PORT_BINARY
-        )
+        return self.async_show_form(step_id="connection", errors=errors)
 
-        schema_dict = {
-            vol.Required(CONF_HOST, default="10.10.10.200"): str,
-            vol.Required(CONF_PORT, default=4196): int,
-            vol.Optional(CONF_DEVICE_NAME, default="US5000-Speicher"): str,
-        }
-
-        # Add variant selection for binary protocol
-        if self.protocol_type == PROTOCOL_BINARY:
-            schema_dict[
-                vol.Required(CONF_BATTERY_VARIANT, default=VARIANT_STANDARD)
-            ] = vol.In(
-                {
-                    VARIANT_STANDARD: "Pylontech Standard",
-                    VARIANT_SOK: "SOK 48V Battery",
-                }
-            )
-
-        data_schema = vol.Schema(schema_dict)
-
-        return self.async_show_form(
-            step_id="connection",
-            data_schema=data_schema,
-            errors=errors,
-            description_placeholders={
-                "protocol": (
-                    "console" if self.protocol_type == PROTOCOL_CONSOLE else "binary"
-                ),
-            },
-        )
-
-    async def _test_connection(self) -> Any:
-        """Test connection to BMS and retrieve device info.
-
-        Returns:
-            DeviceInfo from protocol
-
-        Raises:
-            TimeoutError: If connection times out
-            ConnectionRefusedError: If connection is refused
-            Exception: For other errors
-        """
-        # Create appropriate protocol instance
-        if self.protocol_type == PROTOCOL_CONSOLE:
-            protocol = TCPConsoleProtocol(
-                host=self.config_data[CONF_HOST],
-                port=self.config_data[CONF_PORT],
-            )
-        else:  # PROTOCOL_BINARY
-            protocol = TCPBinaryProtocol(
-                host=self.config_data[CONF_HOST],
-                port=self.config_data[CONF_PORT],
-                variant=self.config_data.get(CONF_BATTERY_VARIANT, VARIANT_STANDARD),
-            )
-
-        # Test connection
-        await protocol.connect()
-        try:
-            device_info = await protocol.get_device_info()
-            _LOGGER.info(
-                "Successfully connected to %s %s (barcode: %s)",
-                device_info.manufacturer,
-                device_info.model,
-                device_info.barcode,
-            )
-            return device_info
-        finally:
-            await protocol.disconnect()
-
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return PylontechOptionsFlowHandler(config_entry)
 
 class PylontechOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Pylontech BMS."""
+    def __init__(self, config_entry):
+        # FIX: Wir nutzen super().__init__ statt self.config_entry zu setzen
+        super().__init__(config_entry)
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage the options."""
+    async def async_step_init(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        # Get current configuration
-        current_device_name = self.config_entry.data.get(CONF_DEVICE_NAME, DEFAULT_NAME)
-
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_DEVICE_NAME,
-                        default=current_device_name,
-                    ): str,
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Optional("device_name", default="US5000"): str,
+            })
         )
