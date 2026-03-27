@@ -16,7 +16,6 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-# Mapping für alle Sensoren (exakt auf jtubb-Karte abgestimmt)
 SENSOR_MAPPINGS = {
     "pack_voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
@@ -40,8 +39,8 @@ SENSOR_MAPPINGS = {
     "temperature_cells_13_16": ("Temperature Cells 13 16", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-# Zellen 0 bis 15 anlegen (mit Namen 'cell_X_voltage')
-for i in range(16):
+# Nur noch exakt 15 Zellen registrieren (0 bis 14)
+for i in range(15):
     SENSOR_MAPPINGS[f"cell_{i}_voltage"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -77,7 +76,6 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         self._sensor_key = sensor_key
         self._pack_id = pack_id
         
-        # Zwingt HA die Entitäten exakt nach Dashboard-Norm zu benennen
         self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         
         barcode = "unknown"
