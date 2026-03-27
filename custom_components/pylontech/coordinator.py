@@ -4,7 +4,7 @@ import logging
 from typing import Any
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import DOMAIN, SCAN_INTERVAL
-from .protocol import ProtocolBase
+from .protocol.base import ProtocolBase
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,13 +32,13 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.protocol.disconnect()
 
     def _flatten(self, d, pid):
-        # EXAKTE Namen für die Dashboard-Karte!
+        # EXAKTE Namen für die Dashboard-Karte (jetzt auch mit Temperatur)
         res = {
             "pack_voltage": d.pack_voltage,
             "pack_current": d.pack_current,
             "state_of_charge": d.soc,
             "power": d.power,
-            "temperature": d.temperatures.get("pack", 0.0),
+            "pack_temperature": d.temperatures.get("pack", 0.0),
             "lowest_cell_voltage": d.cell_volt_low,
             "highest_cell_voltage": d.cell_volt_high,
             "base_state": d.base_state,
@@ -46,8 +46,11 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "remaining_capacity": round((d.soc / 100.0) * 100.0, 1) if d.soc else 0.0,
             "barcode": self.pack_barcodes.get(pid, "Unknown")
         }
-        for i, v in enumerate(d.cell_voltages): res[f"cell_voltage_{i}"] = v
-        for i, t in enumerate(d.cell_temps): res[f"temp_sensor_{i}"] = t
+        
+        # Zellen bei 1 anfangen lassen (WICHTIG für das Popup der Karte!)
+        for i, v in enumerate(d.cell_voltages, 1): res[f"cell_voltage_{i}"] = v
+        for i, t in enumerate(d.cell_temps, 1): res[f"temp_sensor_{i}"] = t
+        
         if len(d.cell_temps) >= 15:
             res["temperature_cells_1_4"] = round(sum(d.cell_temps[0:4])/4, 1)
             res["temperature_cells_5_8"] = round(sum(d.cell_temps[4:8])/4, 1)
