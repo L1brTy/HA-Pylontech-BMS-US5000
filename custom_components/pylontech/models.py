@@ -1,34 +1,34 @@
-"""Models for Pylontech US5000 (Waveshare Edition)."""
+"""Models for Pylontech US5000."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
-from .const import ConnectionType, BatteryVariant
+from .const import BatteryVariant, ConnectionType
+
+@dataclass
+class BatteryData:
+    pack_voltage: float
+    pack_current: float
+    soc: int
+    power: float
+    remaining_capacity: float
+    total_capacity: float
+    temperatures: dict[str, float]
+    cell_voltages: list[float]
+    cell_temps: list[float]
+    cell_volt_low: float
+    cell_volt_high: float
+    base_state: str
+    error_code: int
+    # NEU: Hier fügen wir die Felder hinzu, die vorhin zum Absturz geführt haben
+    cell_socs: list[int] = field(default_factory=list)
+    cell_balances: list[str] = field(default_factory=list)
+    cycle_count: int = 0
 
 @dataclass
 class DeviceInfo:
-    """Device info."""
     manufacturer: str
     model: str
     barcode: str
     firmware_version: str
     connection_type: ConnectionType
     variant: BatteryVariant
-
-@dataclass
-class BatteryData:
-    """Battery data."""
-    pack_voltage: float | None = None
-    pack_current: float | None = None
-    soc: int | None = None
-    power: float | None = None
-    remaining_capacity: float | None = None
-    total_capacity: float | None = None
-    temperatures: dict[str, float] = field(default_factory=dict)
-    cell_voltages: list[float] = field(default_factory=list)
-    cell_temps: list[float] = field(default_factory=list)
-    cell_volt_low: float | None = None
-    cell_volt_high: float | None = None
-    base_state: str | None = None
-    error_code: str | None = None
-    cell_temp_low: float | None = None
-    cell_temp_high: float | None = None
