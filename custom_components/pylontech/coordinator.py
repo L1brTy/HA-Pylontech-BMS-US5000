@@ -43,10 +43,18 @@ class PylontechUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             p_raw = await self.protocol.pwr()
             self.pack_count = len([line for line in p_raw if line and line.split()[0].isdigit() and "Absent" not in line])
             for pid in range(1, self.pack_count + 1):
-                try: self.pack_barcodes[pid] = (await self.protocol.info(pid)).module_barcode.value
+                try: 
+                    info = await self.protocol.info(pid)
+                    self.pack_barcodes[pid] = info.module_barcode.value
                 except: self.pack_barcodes[pid] = f"US5000_P{pid}"
+            
             from homeassistant.helpers.entity import DeviceInfo as HADeviceInfo
-            self.pack_device_infos = tuple(HADeviceInfo(identifiers={(DOMAIN, self.pack_barcodes[p])}, name=f"Pylontech Pack {p}", model="US5000", manufacturer="Pylontech") for p in range(1, self.pack_count + 1))
+            self.pack_device_infos = tuple(HADeviceInfo(
+                identifiers={(DOMAIN, self.pack_barcodes[p])}, 
+                name=f"Pylontech Pack {p}", 
+                model="US5000", 
+                manufacturer="Pylontech"
+            ) for p in range(1, self.pack_count + 1))
         finally: await self.protocol.disconnect()
 
     def sensor_value(self, sensor, pid): return self.data.get(f"pack_{pid}", {}).get(sensor)
