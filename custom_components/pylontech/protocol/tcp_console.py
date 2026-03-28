@@ -52,19 +52,18 @@ class TCPConsoleProtocol(ProtocolBase):
             pack_current=p.curr.value, 
             soc=p.soc.value,
             power=round(p.volt.value * p.curr.value, 0) if p.volt.value else 0,
-            # FIX: Hier nehmen wir den Wert aus dem pwr-Kommando (mAh zu Ah)
             remaining_capacity=p.remain_cap.value / 1000.0 if hasattr(p, 'remain_cap') else 0.0, 
             total_capacity=100.0,
             temperatures={"pack": p.temp.value, "cell_low": p.cell_temp_low.value, "cell_high": p.cell_temp_high.value},
             cell_voltages=[v.volt for v in b.values], 
             cell_temps=[v.tempr for v in b.values],
-            # NEU: Hier geben wir die SOCs und Balancing-Werte an den Coordinator weiter
-            cell_socs=[getattr(v, 'soc', None) for v in b.values],
-            cell_balances=[getattr(v, 'balance', None) for v in b.values],
+            cell_socs=[v.soc for v in b.values],
+            cell_balances=[v.balance for v in b.values],
             cell_volt_low=p.cell_volt_low.value, 
-            cell_volt_high=p.cell_bolt_high.value,
+            cell_volt_high=p.cell_volt_high.value, # FIX: Hier stand vorher 'bolt'
             base_state=p.base_state.value, 
-            error_code=p.error_code.value
+            error_code=p.error_code.value,
+            cycle_count=p.cycle_count
         )
 
     async def get_device_info(self) -> DeviceInfo:
