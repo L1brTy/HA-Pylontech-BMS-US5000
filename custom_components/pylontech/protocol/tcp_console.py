@@ -42,5 +42,14 @@ class TCPConsoleProtocol(ProtocolBase):
             base_state=p.base_state.value, error_code=0, cycle_count=s.cycle_count
         )
 
-    async def info(self, pack_id: int = 1): return InfoCommand(await self._exec_cmd(f"info {pack_id}"))
+    # Diese Funktion muss exakt so heißen (get_device_info)
+    async def get_device_info(self) -> DeviceInfo:
+        i = InfoCommand(await self._exec_cmd("info 1"))
+        return DeviceInfo(
+            manufacturer="Pylontech", model="US5000",
+            barcode=i.module_barcode.value, firmware_version=i.soft_version.value,
+            connection_type=ConnectionType.TCP_CONSOLE, variant=BatteryVariant.PYLONTECH_STANDARD
+        )
+
     async def pwr(self): return await self._exec_cmd("pwr")
+    async def info(self, pack_id: int = 1): return InfoCommand(await self._exec_cmd(f"info {pack_id}"))
