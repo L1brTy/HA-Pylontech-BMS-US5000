@@ -1,4 +1,3 @@
-"""Parser for Pylontech US5000 Console Output."""
 from __future__ import annotations
 
 class BatValue:
@@ -10,9 +9,8 @@ class BatValue:
         self.curr = int(p[2]) / 1000.0
         self.tempr = int(p[3]) / 1000.0
         self.base_state = p[4]
-        # In der 'bat' Tabelle steht SOC an Index 8
         self.soc = int(p[8].replace('%', '')) if '%' in p[8] else 0
-        self.balance = p[-1] # BAL ist die letzte Spalte
+        self.balance = p[-1]
 
 class BatCommand:
     def __init__(self, lines: tuple[str]):
@@ -37,7 +35,6 @@ class PwrCommand:
         target = str(pack_id)
         for line in lines:
             p = line.split()
-            # Deine US5000: Index 1 & 2. Volt=Index 1, SOC=Index 12
             if len(p) > 12 and p[0] == target and p[8] != "Absent":
                 try:
                     self.volt.value = int(p[1]) / 1000.0
@@ -48,7 +45,6 @@ class PwrCommand:
                     self.cell_volt_low.value = int(p[6]) / 1000.0
                     self.cell_volt_high.value = int(p[7]) / 1000.0
                     self.base_state.value = p[8]
-                    # SOC steht in der 'pwr' Zeile an Index 12
                     self.soc.value = int(p[12].replace('%', '')) if '%' in p[12] else 0
                 except: pass
                 break
@@ -58,8 +54,7 @@ class StatCommand:
         self.cycle_count = 0
         for line in lines:
             if "CYCLE Times" in line:
-                try:
-                    self.cycle_count = int(line.split(":")[-1].strip())
+                try: self.cycle_count = int(line.split(":")[-1].strip())
                 except: pass
 
 class InfoCommand:
