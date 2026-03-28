@@ -9,7 +9,6 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-# Haupt-Mapping
 SENSOR_MAPPINGS = {
     "pack_voltage": ("Pack Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3),
     "pack_current": ("Pack Current", SensorDeviceClass.CURRENT, UnitOfElectricCurrent.AMPERE, SensorStateClass.MEASUREMENT, 2),
@@ -32,13 +31,10 @@ SENSOR_MAPPINGS = {
     "temperature_cells_13_16": ("Temperature Zone 4", SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, SensorStateClass.MEASUREMENT, 1),
 }
 
-# Dynamische Zell-Sensoren (Spannung, SOC, Balancing)
+# 15 Zellen registrieren
 for i in range(15):
-    # Spannung
     SENSOR_MAPPINGS[f"cell_{i}_voltage"] = (f"Cell {i} Voltage", SensorDeviceClass.VOLTAGE, UnitOfElectricPotential.VOLT, SensorStateClass.MEASUREMENT, 3)
-    # SOC
     SENSOR_MAPPINGS[f"cell_{i}_soc"] = (f"Cell {i} State of Charge", SensorDeviceClass.BATTERY, PERCENTAGE, SensorStateClass.MEASUREMENT, 0)
-    # Balancing
     SENSOR_MAPPINGS[f"cell_{i}_balancing"] = (f"Cell {i} Balancing Status", None, None, None, None)
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -65,6 +61,8 @@ class PylontechSensorEntity(CoordinatorEntity, SensorEntity):
         self.entity_id = f"sensor.pylontech_pack_{pack_id}_{sensor_key}"
         barcode = coordinator.pack_barcodes.get(pack_id, f"pack_{pack_id}")
         self._attr_unique_id = f"pylon_{barcode}_{sensor_key}"
+        self._attr_has_entity_name = False
+        self._attr_name = f"Pylontech Pack {pack_id} {description.name}"
         self._attr_device_info = coordinator.pack_device_infos[pack_id - 1]
 
     @property
