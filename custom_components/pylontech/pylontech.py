@@ -1,34 +1,28 @@
-"""Parser for Pylontech US5000 Console Output."""
 from __future__ import annotations
 
 class BatValue:
     def __init__(self, line: str):
-        # Index Volt Curr Temp BaseState V.State C.State T.State SOC Coulomb BAL
-        # 0 3376 -396 10900 Dischg Normal Normal Normal 89% 84450 mAH N
-        parts = line.split()
-        self.cell_id = int(parts[0])
-        self.volt = int(parts[1]) / 1000.0
-        self.curr = int(parts[2]) / 1000.0
-        self.tempr = int(parts[3]) / 1000.0
-        self.base_state = parts[4]
-        # SOC extrahieren (89% -> 89)
-        self.soc = int(parts[8].replace('%', '')) if len(parts) > 8 and '%' in parts[8] else 0
-        # Balancing (N oder Y)
-        self.balance = parts[-1] if len(parts) > 10 else "N"
+        p = line.split()
+        self.cell_id = int(p[0])
+        self.volt = int(p[1]) / 1000.0
+        self.curr = int(p[2]) / 1000.0
+        self.tempr = int(p[3]) / 1000.0
+        self.base_state = p[4]
+        # SOC steht bei 'bat' an Index 8
+        self.soc = int(p[8].replace('%', '')) if '%' in p[8] else 0
+        # BAL steht ganz am Ende
+        self.balance = p[-1]
 
 class BatCommand:
     def __init__(self, lines: tuple[str]):
         self.values = []
         for line in lines:
-            if line and line[0].isdigit():
-                try:
-                    self.values.append(BatValue(line))
-                except Exception:
-                    continue
+            if line and line[0].isdigit() and len(line.split()) > 10:
+                try: self.values.append(BatValue(line))
+                except: continue
 
 class PwrCommand:
     def __init__(self, lines: tuple[str], pack_id: int = 1):
-        # Dummys initialisieren
         self.volt = type('V', (), {'value': 0.0})
         self.curr = type('C', (), {'value': 0.0})
         self.soc = type('S', (), {'value': 0})
@@ -39,28 +33,33 @@ class PwrCommand:
         self.cell_volt_high = type('VH', (), {'value': 0.0})
         self.cell_temp_low = type('TL', (), {'value': 0.0})
         self.cell_temp_high = type('TH', (), {'value': 0.0})
-        self.error_code = type('E', (), {'value': 0})
-        self.cycle_count = 0
 
+        target = str(pack_id)
         for line in lines:
             p = line.split()
-            # Suche Zeile die mit der Pack-ID beginnt (0-basiert im Log)
-            if len(p) > 9 and p[0].isdigit() and int(p[0]) == (pack_id - 1):
+            # Pylontech US5000 pwr Log: Index 1 & 2, Volt an Index 1, SOC an Index 12
+            if len(p) > 12 and p[0] == target and p[8] != "Absent":
                 self.volt.value = int(p[1]) / 1000.0
                 self.curr.value = int(p[2]) / 1000.0
                 self.temp.value = int(p[3]) / 1000.0
-                self.base_state.value = p[4]
-                self.soc.value = int(p[8].replace('%', '')) if '%' in p[8] else int(p[8])
-                self.remain_cap.value = float(p[9])
-                
-                # Wenn das Log mehr Spalten hat, nimm Cycle Count und Min/Max
-                if len(p) > 12:
-                    self.cycle_count = int(p[12])
+                self.cell_temp_low.value = int(p[4]) / 1000.0
+                self.cell_temp_high.value = int(p[5]) / 1000.0
+                self.cell_volt_low.value = int(p[6]) / 1000.0
+                self.cell_volt_high.value = int(p[7]) / 1000.0
+                self.base_state.value = p[8]
+                self.soc.value = int(p[12].replace('%', '')) if '%' in p[12] else 0
+                break
+
+class StatCommand:
+    def __init__(self, lines: tuple[str]):
+        self.cycle_count = 0
+        for line in lines:
+            if "CYCLE Times" in line:
+                try: self.cycle_count = int(line.split(":")[-1].strip())
+                except: pass
 
 class InfoCommand:
     def __init__(self, lines: tuple[str]):
         self.module_barcode = type('B', (), {'value': "Unknown"})
-        self.main_sw_version = type('V', (), {'value': "Unknown"})
         for line in lines:
-            if "Module Barcode" in line: self.module_barcode.value = line.split(":")[-1].strip()
-            if "Main Soft Version" in line: self.main_sw_version.value = line.split(":")[-1].strip()
+            if "Barcode" in line: self.module_barcode.value = line.split(":")[-1].strip()
