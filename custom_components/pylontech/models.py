@@ -1,4 +1,3 @@
-"""Models for Pylontech US5000."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
@@ -19,7 +18,6 @@ class BatteryData:
     cell_volt_high: float
     base_state: str
     error_code: int
-    # NEU: Hier fügen wir die Felder hinzu, die vorhin zum Absturz geführt haben
     cell_socs: list[int] = field(default_factory=list)
     cell_balances: list[str] = field(default_factory=list)
     cycle_count: int = 0
