@@ -1,4 +1,3 @@
-"""TCP Console Protocol for Pylontech US5000 (Waveshare Edition)."""
 from __future__ import annotations
 import asyncio
 from .base import ProtocolBase
@@ -29,17 +28,13 @@ class TCPConsoleProtocol(ProtocolBase):
         data = await asyncio.wait_for(self.reader.readuntil(b"pylon>"), 5)
         return tuple(line.strip() for line in data.decode("ascii", errors="ignore").splitlines() if line.strip())
 
-    # Diese Methode MUSS vorhanden sein, damit der Config-Flow nicht abstürzt
     async def get_device_info(self) -> DeviceInfo:
         raw = await self._exec_cmd("info 1")
         i = InfoCommand(raw)
         return DeviceInfo(
-            manufacturer="Pylontech",
-            model="US5000",
-            barcode=i.module_barcode.value,
-            firmware_version=i.soft_version.value,
-            connection_type=ConnectionType.TCP_CONSOLE,
-            variant=BatteryVariant.PYLONTECH_STANDARD
+            manufacturer="Pylontech", model="US5000",
+            barcode=i.module_barcode.value, firmware_version=i.soft_version.value,
+            connection_type=ConnectionType.TCP_CONSOLE, variant=BatteryVariant.PYLONTECH_STANDARD
         )
 
     async def get_battery_data(self, pack_id: int = 1) -> BatteryData:
@@ -47,30 +42,17 @@ class TCPConsoleProtocol(ProtocolBase):
         b_raw = await self._exec_cmd(f"bat {pack_id}")
         s_raw = await self._exec_cmd(f"stat {pack_id}")
         
-        p = PwrCommand(p_raw, pack_id)
-        b = BatCommand(b_raw)
-        s = StatCommand(s_raw)
+        p, b, s = PwrCommand(p_raw, pack_id), BatCommand(b_raw), StatCommand(s_raw)
         
         return BatteryData(
-            pack_voltage=p.volt.value,
-            pack_current=p.curr.value,
-            soc=p.soc.value,
-            power=round(p.volt.value * p.curr.value, 0),
-            remaining_capacity=0.0,
-            total_capacity=100.0,
+            pack_voltage=p.volt.value, pack_current=p.curr.value, soc=p.soc.value,
+            power=round(p.volt.value * p.curr.value, 0), remaining_capacity=0.0, total_capacity=100.0,
             temperatures={"pack": p.temp.value, "cell_low": p.cell_temp_low.value, "cell_high": p.cell_temp_high.value},
-            cell_voltages=[v.volt for v in b.values],
-            cell_temps=[v.tempr for v in b.values],
-            cell_socs=[v.soc for v in b.values],
-            cell_balances=[v.balance for v in b.values],
-            cell_volt_low=p.cell_volt_low.value,
-            cell_volt_high=p.cell_volt_high.value,
-            base_state=p.base_state.value,
-            error_code=0,
-            cycle_count=s.cycle_count
+            cell_voltages=[v.volt for v in b.values], cell_temps=[v.tempr for v in b.values],
+            cell_socs=[v.soc for v in b.values], cell_balances=[v.balance for v in b.values],
+            cell_volt_low=p.cell_volt_low.value, cell_volt_high=p.cell_volt_high.value,
+            base_state=p.base_state.value, error_code=0, cycle_count=s.cycle_count
         )
 
-    # Hilfsmethoden, die oft von der Basis-Klasse erwartet werden
     async def pwr(self): return await self._exec_cmd("pwr")
     async def info(self, pack_id: int = 1): return InfoCommand(await self._exec_cmd(f"info {pack_id}"))
-    async def bat(self, pack_id: int = 1): return BatCommand(await self._exec_cmd(f"bat {pack_id}"))
