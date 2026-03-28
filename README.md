@@ -1,9 +1,8 @@
 # Pylontech BMS US5000 (Waveshare Edition)
 
-[![HACS Add Repository](https://img.shields.io/badge/HACS-Add%20Repository-orange.svg?style=for-the-badge&logo=homeassistant)](https://my.homeassistant.io/redirect/hacs_repository/?category=integration&repository=L1brTy/HA-Pylontech-BMS-US5000)
+[![HACS Add Repository](https://img.shields.io/badge/HACS-Add%20Repository-orange.svg?style=for-the-badge&logo=homeassistant)](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=L1brTy/HA-Pylontech-BMS-US5000)
 
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=davidrapan&repository=ha-pylontech&category=integration)
 
 Dieser Home Assistant Custom Component ist ein spezialisierter **Fork** von [jtubb/HA-Pylontech-BMS](https://github.com/jtubb/HA-Pylontech-BMS). 
 
